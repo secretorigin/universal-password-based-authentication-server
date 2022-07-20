@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
+	"github.com/p2034/universal-password-based-authentication-server/internal/requests"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
@@ -24,7 +25,7 @@ func Start() {
 }
 
 func StartServer(conf settings.ServerConf) {
-	http.HandleFunc("/user/create", request.userCreateHandler)
+	http.HandleFunc("/user/create", requests.UserCreateHandler)
 
 	host := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
 

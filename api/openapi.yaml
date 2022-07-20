@@ -5,13 +5,16 @@ info:
   contact:
     name: Kandakov Danil
   version: 1.0.0
+servers:
+- url: http://localhost
+  description: For testing, I need it, sorry
 tags:
-- name: User
-  description: Account management
-- name: Token
-  description: Access management
-- name: Additional
-  description: Some helping handles
+  - name: User
+    description: Account management
+  - name: Token
+    description: Access management
+  - name: Additional
+    description: Some helping handles
 paths:
   /user/create:
     post:
@@ -26,7 +29,13 @@ paths:
               $ref: '#/components/schemas/login_data'
       responses:
         '200':
-          description: All is ok, temporary password sent or not (depends on server settings)
+          description: >-
+            All is ok, temporary password sent or not (depends on server
+            settings)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/confirmation_token'
         '400':
           description: Login already in use, or login and password wrong format
   /user/delete:
@@ -42,9 +51,19 @@ paths:
               properties:
                 access:
                   $ref: '#/components/schemas/access_data'
+              example:
+                access:
+                  refresh_token: my_refresh_token
+                  password: my_password
       responses:
         '200':
-          description: All is ok, temporary password sent or not (depends on server settings)
+          description: >-
+            All is ok, temporary password sent or not (depends on server
+            settings)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/confirmation_token'
         '400':
           description: Wrong access data
   /password/change:
@@ -65,13 +84,23 @@ paths:
                 logout_everywhere:
                   description: Delete all tokens if it's true
                   type: boolean
+              example:
+                access:
+                  refresh_token: my_refresh_token
+                  password: my_password
+                new_password: my_new_password
+                logout_everywhere: false
       responses:
         '200':
-          description: All is ok, temporary password sent or not (depends on server settings)
+          description: >-
+            All is ok, temporary password sent or not (depends on server
+            settings)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/token_data'
+                oneOf:
+                - $ref: '#/components/schemas/token_data'
+                - $ref: '#/components/schemas/confirmation_token'
         '400':
           description: Wrong access data
   /login/change:
@@ -89,9 +118,20 @@ paths:
                   $ref: '#/components/schemas/access_data'
                 new_login:
                   type: string
+              example:
+                access:
+                  refresh_token: my_refresh_token
+                  password: my_password
+                new_login: my_new_login
       responses:
         '200':
-          description: All is ok, temporary password sent or not (depends on server settings)
+          description: >-
+            All is ok, temporary password sent or not (depends on server
+            settings)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/confirmation_token'
         '400':
           description: Wrong access data
   /token/get:
@@ -107,7 +147,9 @@ paths:
               $ref: '#/components/schemas/login_data'
       responses:
         '200':
-          description: All is ok, temporary password sent or not (depends on server settings)
+          description: >-
+            All is ok, temporary password sent or not (depends on server
+            settings)
           content:
             application/json:
               schema:
@@ -126,7 +168,9 @@ paths:
             schema:
               properties:
                 refresh_token:
-                    type: string
+                  type: string
+              example:
+                refresh_token: my_refresh_token
       responses:
         '200':
           description: All is ok
@@ -145,6 +189,8 @@ paths:
               properties:
                 token:
                   type: string
+              example:
+                token: my_token
       responses:
         '200':
           description: All is ok
@@ -163,6 +209,8 @@ paths:
               properties:
                 refresh_token:
                   type: string
+              example:
+                refresh_token: my_refresh_token
       responses:
         '200':
           description: All is ok
@@ -174,7 +222,9 @@ paths:
           description: Wrong token
   /confirm:
     patch:
-      description: Confirm some actions for Account managment or Access managment (user/create, user/delete, token/get, password/change, login/change)
+      description: >-
+        Confirm some actions for Account managment or Access managment
+        (user/create, user/delete, token/get, password/change, login/change). It can return different json's for different situations (see base requests).
       tags:
         - Additional
       requestBody:
@@ -193,6 +243,7 @@ paths:
                   - $ref: '#/components/schemas/token_data'
         '400':
           description: Wrong temporary password or user id
+          
 components:
   schemas:
     login_data:
@@ -201,21 +252,39 @@ components:
           type: string
         password:
           type: string
+      example:
+        login: my_login
+        password: my_password
     access_data:
       properties:
         refresh_token:
           type: string
         password:
           type: string
+      example:
+        refresh_token: my_refresh_token
+        password: my_password
     temporary_login_data:
       properties:
-        user_id:
-          type: integer
+        temporary_token:
+          type: string
         temporary_password:
           type: string
+      example:
+        temporary_token: my_temporary_token
+        temporary_password: my_temporary_password
     token_data:
       properties:
         token:
           type: string
         refresh_token:
           type: string
+      example:
+        token: my_token
+        refresh_token: my_refresh_token
+    confirmation_token:
+      properties:
+        temporary_token:
+          type: string
+      example:
+        temporary_token: my_temporary_token
