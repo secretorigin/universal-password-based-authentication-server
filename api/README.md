@@ -1,4 +1,5 @@
-<h1>universal-password-based-authentication-server API</h1>
+<h1>universal-password-based-authentication-server</h1>
+<h1>API</h1>
 
 <h2>Why does it look like this?</h2>
 
@@ -15,4 +16,4 @@ We can classify handles in 2 ways:
   - App flow: <b>/token/get</b>, <b>/token/delete</b>, <b>/token/check</b>, <b>/token/update</b>
     App must use this handles in the background.
 
-In perfect way only Service servers interact with with handles: you can redirect https://service/login on https://local_auth_server/token/create etc. Handle /token/check by definition only needed by the server. Because of this you need to create special API-redirection server for your service.
+In perfect way only Service servers interact with this handles: you can redirect https://service/login on https://local_auth_server/token/create etc. Handle /token/check by definition only needed by the server. Because of this you need to create special API-redirection server for your service.
