@@ -1,8 +1,14 @@
 .DS_Store
+.vscode
 
 bin
+build
 *.out
 
+vendor
+log
+
+*.local*
 *.local.env
 *.local.json
 *.local.conf

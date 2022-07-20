@@ -1,0 +1,221 @@
+openapi: 3.0.2
+info:
+  title: universal-password-based-authentication-server
+  description: Universal password based authentication server.
+  contact:
+    name: Kandakov Danil
+  version: 1.0.0
+tags:
+- name: User
+  description: Account management
+- name: Token
+  description: Access management
+- name: Additional
+  description: Some helping handles
+paths:
+  /user/create:
+    post:
+      description: Register new user in the system.
+      tags:
+        - User
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/login_data'
+      responses:
+        '200':
+          description: All is ok, temporary password sent or not (depends on server settings)
+        '400':
+          description: Login already in use, or login and password wrong format
+  /user/delete:
+    post:
+      description: Delete user from system
+      tags:
+        - User
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                access:
+                  $ref: '#/components/schemas/access_data'
+      responses:
+        '200':
+          description: All is ok, temporary password sent or not (depends on server settings)
+        '400':
+          description: Wrong access data
+  /password/change:
+    patch:
+      description: Change password of the user
+      tags:
+        - User
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                access:
+                  $ref: '#/components/schemas/access_data'
+                new_password:
+                  type: string
+                logout_everywhere:
+                  description: Delete all tokens if it's true
+                  type: boolean
+      responses:
+        '200':
+          description: All is ok, temporary password sent or not (depends on server settings)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/token_data'
+        '400':
+          description: Wrong access data
+  /login/change:
+    patch:
+      description: Change login of the user
+      tags:
+        - User
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                access:
+                  $ref: '#/components/schemas/access_data'
+                new_login:
+                  type: string
+      responses:
+        '200':
+          description: All is ok, temporary password sent or not (depends on server settings)
+        '400':
+          description: Wrong access data
+  /token/get:
+    post:
+      description: Login into the system. Get authorization token
+      tags:
+        - Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/login_data'
+      responses:
+        '200':
+          description: All is ok, temporary password sent or not (depends on server settings)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/token_data'
+        '400':
+          description: Wrong login or password
+  /token/delete:
+    post:
+      description: Logout from the system. Remove authorization token from database
+      tags:
+        - Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                refresh_token:
+                    type: string
+      responses:
+        '200':
+          description: All is ok
+        '400':
+          description: Wrong token
+  /token/check:
+    post:
+      description: Check authorization token
+      tags:
+        - Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: All is ok
+        '400':
+          description: Wrong token
+  /token/update:
+    patch:
+      description: Update authorization token
+      tags:
+        - Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: All is ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/token_data'
+        '400':
+          description: Wrong token
+  /confirm:
+    patch:
+      description: Confirm some actions for Account managment or Access managment (user/create, user/delete, token/get, password/change, login/change)
+      tags:
+        - Additional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/temporary_login_data'
+      responses:
+        '200':
+          description: All is ok, user is created
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/token_data'
+        '400':
+          description: Wrong temporary password or user id
+components:
+  schemas:
+    login_data:
+      properties:
+        login:
+          type: string
+        password:
+          type: string
+    access_data:
+      properties:
+        refresh_token:
+          type: string
+        password:
+          type: string
+    temporary_login_data:
+      properties:
+        user_id:
+          type: integer
+        temporary_password:
+          type: string
+    token_data:
+      properties:
+        token:
+          type: string
+        refresh_token:
+          type: string
