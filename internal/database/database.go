@@ -1,24 +1,18 @@
-package cmd
+package database
 
 import (
 	"database/sql"
 	"fmt"
 	"log"
 	"sync"
-)
 
-type DBConf struct {
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Name     string `json:"name"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-}
+	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
+)
 
 var DB *sql.DB = nil
 var DBmut sync.Mutex
 
-func OpenDB(conf DBConf) {
+func OpenDB(conf settings.DBConf) {
 	connectionsString := fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s",
 		conf.Host, conf.Port, conf.Name, conf.User, conf.Password)
 	// open database

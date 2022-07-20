@@ -6,18 +6,13 @@ import (
 	"net/http"
 
 	_ "github.com/lib/pq"
+
+	_ "github.com/p2034/universal-password-based-authentication-server/internal/request"
+	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type ServerConf struct {
-	Host string `json:"host"`
-	Port int    `json:"port"`
-}
-
-func StartServer(conf ServerConf) {
-	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		fmt.Fprintf(w, "all is ok")
-	})
+func StartServer(conf settings.ServerConf) {
+	http.HandleFunc("/user/create", request.userCreateHandler)
 
 	host := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
 

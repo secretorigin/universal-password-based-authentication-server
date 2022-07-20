@@ -1,4 +1,4 @@
-package cmd
+package settings
 
 import (
 	"encoding/json"
@@ -6,6 +6,19 @@ import (
 	"log"
 	"os"
 )
+
+type DBConf struct {
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Name     string `json:"name"`
+	User     string `json:"user"`
+	Password string `json:"password"`
+}
+
+type ServerConf struct {
+	Host string `json:"host"`
+	Port int    `json:"port"`
+}
 
 // parse config from file
 func ParseConf(path string, conf interface{}) {
