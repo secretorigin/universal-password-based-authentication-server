@@ -7,9 +7,21 @@ import (
 
 	_ "github.com/lib/pq"
 
-	_ "github.com/p2034/universal-password-based-authentication-server/internal/request"
+	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
+
+func Start() {
+	// initialize database
+	var dbconf settings.DBConf
+	settings.ParseConf("./configs/db.local.json", &dbconf)
+	database.OpenDB(dbconf)
+
+	// initialize and start server
+	var serverconf settings.ServerConf
+	settings.ParseConf("./configs/server.local.json", &serverconf)
+	StartServer(serverconf)
+}
 
 func StartServer(conf settings.ServerConf) {
 	http.HandleFunc("/user/create", request.userCreateHandler)
