@@ -16,7 +16,8 @@ func OpenDB(conf settings.DBConf) {
 	connectionsString := fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s",
 		conf.Host, conf.Port, conf.Name, conf.User, conf.Password)
 	// open database
-	DB, err := sql.Open("postgres", connectionsString)
+	var err error
+	DB, err = sql.Open("postgres", connectionsString)
 	if err != nil {
 		log.Fatal(err.Error())
 		return

@@ -25,7 +25,10 @@ func Start() {
 }
 
 func StartServer(conf settings.ServerConf) {
+	settings.DebugMode = true
 	http.HandleFunc("/user/create", requests.UserCreateHandler)
+	http.HandleFunc("/user/delete", requests.UserDeleteHandler)
+	http.HandleFunc("/token/get", requests.TokenGetHandler)
 
 	host := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
 
