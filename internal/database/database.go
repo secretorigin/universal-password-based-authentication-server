@@ -30,3 +30,7 @@ func OpenDB(conf settings.DBConf) {
 	}
 	log.Println("Connect to the database.")
 }
+
+func GetDB() *sql.DB {
+	return DB
+}

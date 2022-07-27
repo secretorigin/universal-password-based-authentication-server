@@ -40,14 +40,16 @@ func UserCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	if settings.UserCreate2FA {
 		// create temporaty password with purpose 'login'
-
+		var res response_temporary_token_body
+		res.Temporary_token = createPartTimePassword(body.Login, "create", body)
+		writeResponse(&w, res)
 	} else {
 		// create new user
-		UserCreate(&body, &w)
+		UserCreate(&w, &body)
 	}
 }
 
-func UserCreate(body *request_user_create_body, w *http.ResponseWriter) {
+func UserCreate(w *http.ResponseWriter, body *request_user_create_body) {
 	// gen new random parameters and hash using them
 	iterations := rand.Int31()%1000 + settings.PASSWORD_MIN_ITERATIONS_COUNT
 	hash := field.HashPassword(field.GenSalt(settings.PASSWORD_SALT_SIZE), []byte(body.Password), int(iterations))

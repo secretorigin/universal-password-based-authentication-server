@@ -20,7 +20,38 @@ func GenSalt(size int) []byte {
 	return salt
 }
 
-// token
+// token for temporary password
+type TemporaryTokenBody struct {
+	Temporary_token_id uint64 `json:"temporary_token_id"`
+	Creation_date      int64  `json:"creation_date"`
+}
+
+func GenTemporaryToken(salt []byte, body TemporaryTokenBody) string {
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"temporary_token_id": body.Temporary_token_id,
+		"creation_date":      body.Creation_date,
+	}).SignedString(salt)
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	return token
+}
+
+func ParseTemporaryTokenBody(token string) TemporaryTokenBody {
+	var body TemporaryTokenBody
+
+	rawbody, err := jwt.DecodeSegment(strings.Split(token, ".")[1])
+	if err != nil {
+		log.Println(err.Error())
+	}
+	err = json.Unmarshal(rawbody, &body)
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	return body
+}
 
 type TokenBody struct {
 	Token_id      uint64 `json:"token_id"`
@@ -41,18 +72,6 @@ func GenToken(salt []byte, body TokenBody) string {
 	return token
 }
 
-func CheckToken(salt []byte, token string) bool {
-	token_obj, _ := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(salt), nil
-	})
-
-	_, ok := token_obj.Claims.(jwt.MapClaims)
-	return ok && token_obj.Valid
-}
-
 func ParseTokenBody(token string) TokenBody {
 	var body TokenBody
 
@@ -68,7 +87,19 @@ func ParseTokenBody(token string) TokenBody {
 	return body
 }
 
-// password
+// for all tokens
+func CheckToken(salt []byte, token string) bool {
+	token_obj, _ := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(salt), nil
+	})
+
+	_, ok := token_obj.Claims.(jwt.MapClaims)
+	return ok && token_obj.Valid
+}
+
 func HashPassword(salt []byte, password []byte, iterations int) []byte {
 	passwordHash := pbkdf2.Key(password, salt, iterations, settings.PASSWORD_HASH_LENGTH, sha256.New)
 	return append(salt, passwordHash...)

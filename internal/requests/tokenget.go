@@ -41,38 +41,41 @@ func TokenGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if settings.TokenGet2FA {
-		// create temporaty password with purpose 'login'
-
-	} else {
-		// generate new token for user
-		TokenGet(&body, &w)
-	}
-}
-
-func TokenGet(body *request_token_get_body, w *http.ResponseWriter) {
+	// get user_id
 	var user_id uint64
-	err := database.DB.QueryRow("SELECT user_id_ FROM users WHERE login_=$1;", body.Login).Scan(&user_id)
+	err = database.DB.QueryRow("SELECT user_id_ FROM users WHERE login_=$1;", body.Login).Scan(&user_id)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.Println(err.Error())
 		} else if settings.DebugMode {
 			log.Println("Error: User not found:", err.Error())
 		}
-		http.Error(*w, "Bad request", 400)
+		http.Error(w, "Bad request", 400)
 		return
 	}
 	// check password
-	if !database.CheckPasswordWithUserId(database.DB, user_id, body.Password) {
-		http.Error(*w, "Bad request", 400)
+	if !database.CheckPassword(user_id, body.Password) {
+		http.Error(w, "Bad request", 400)
 		if settings.DebugMode {
 			log.Println("Error: Wrong password.")
 		}
 		return
 	}
 
+	if settings.TokenGet2FA {
+		// create temporaty password with purpose 'login'
+		var res response_temporary_token_body
+		res.Temporary_token = createPartTimePassword(body.Login, "token", token_get_purpose_body{User_id: user_id})
+		writeResponse(&w, res)
+	} else {
+		// generate new token for user
+		TokenGet(&w, token_get_purpose_body{User_id: user_id})
+	}
+}
+
+func TokenGet(w *http.ResponseWriter, body token_get_purpose_body) {
 	var res response_token_get_body
-	res.Token, res.Refresh_token = database.GenToken(database.DB, user_id)
+	res.Token, res.Refresh_token = database.GenToken(body.User_id)
 	if res.Token == "" || res.Refresh_token == "" {
 		http.Error(*w, "Bad request", 400)
 		if settings.DebugMode {
@@ -81,16 +84,5 @@ func TokenGet(body *request_token_get_body, w *http.ResponseWriter) {
 		return
 	}
 
-	(*w).WriteHeader(http.StatusOK)
-	(*w).Header().Set("Content-Type", "application/json")
-	rawbody, err := json.Marshal(res)
-	if err != nil {
-		log.Println(err.Error())
-		if settings.DebugMode {
-			log.Println("Error: creating response body.")
-		}
-		http.Error(*w, "Bad request", 400)
-		return
-	}
-	(*w).Write(rawbody)
+	writeResponse(w, res)
 }

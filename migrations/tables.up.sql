@@ -7,7 +7,7 @@ CREATE TABLE users(
 
 CREATE TABLE tokens(
   token_id_ BIGSERIAL PRIMARY KEY,
-  
+  user_id_ BIGINT NOT NULL,
   salt_ varchar(32) NOT NULL,
   refresh_salt_ varchar(32) NOT NULL
 );
@@ -18,7 +18,11 @@ CREATE TABLE temporary_passwords(
 
   salt_ varchar(32) NOT NULL,
   
-  -- purposes: register, login, ...
+  -- purposes: create (create user), 
+  --           delete (delete user),
+  --           token (create new token for the user),
+  --           password (change password),
+  --           login (change login)
   purpose_ TEXT NOT NULL,
   data_ JSON
 );

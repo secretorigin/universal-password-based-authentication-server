@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
-	"github.com/p2034/universal-password-based-authentication-server/internal/field"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
@@ -35,34 +34,41 @@ func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// check access part
+	token_body, check := database.CheckAccessPart(body.Access.Refresh_token, body.Access.Password)
+	if !check {
+		if settings.DebugMode {
+			log.Println("Error: Wrong access part.")
+		}
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
 	if settings.UserDelete2FA {
 		// create temporaty password with purpose 'delete'
-
+		var login string
+		err = database.DB.QueryRow("SELECT login_ FROM users WHERE user_id_=$1;", token_body.User_id).Scan(&login)
+		if err != nil {
+			log.Println(err.Error())
+			if settings.DebugMode {
+				log.Println("Error: Getting user's login from database:", err.Error())
+			}
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+		var res response_temporary_token_body
+		res.Temporary_token = createPartTimePassword(login, "delete", user_delete_purpose_body{
+			User_id: token_body.User_id})
+		writeResponse(&w, res)
 	} else {
 		// delete user
-		UserDelete(&body, &w)
+		UserDelete(&w, user_delete_purpose_body{User_id: token_body.User_id})
 	}
 }
 
-func UserDelete(body *request_user_delete_body, w *http.ResponseWriter) {
-	// check password and token
-	token_body := field.ParseTokenBody(body.Access.Refresh_token)
-	if !database.CheckToken(database.DB, body.Access.Refresh_token, int(token_body.Token_id), false) {
-		if settings.DebugMode {
-			log.Println("Error: Wrong token.")
-		}
-		http.Error(*w, "Bad request", http.StatusBadRequest)
-		return
-	}
-	if !database.CheckPasswordWithUserId(database.DB, token_body.User_id, body.Access.Password) {
-		if settings.DebugMode {
-			log.Println("Error: Wrong password.")
-		}
-		http.Error(*w, "Bad request", http.StatusBadRequest)
-		return
-	}
+func UserDelete(w *http.ResponseWriter, body user_delete_purpose_body) {
 	// delete user
-	_, err := database.DB.Query("DELETE FROM users WHERE user_id_=$1;", token_body.User_id)
+	_, err := database.DB.Query("DELETE FROM users WHERE user_id_=$1;", body.User_id)
 	if err != nil {
 		log.Println(err.Error())
 		if settings.DebugMode {

@@ -7,7 +7,9 @@ var (
 	UserCreate2FA     bool = false // register
 	UserDelete2FA     bool = false // delete account
 	TokenGet2FA       bool = false // login
-	DebugMode         bool = false
+
+	DebugMode             bool = false
+	TemporaryPasswordSend func(string) string
 )
 
 const (
