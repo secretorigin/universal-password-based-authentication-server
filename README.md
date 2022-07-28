@@ -53,8 +53,10 @@ Tables all tables you can see in the <b>./migrations</b> folder
 - Set temporary password regular expession (<b>settings.TemporaryPasswordRegex</b>)
 
 - Set all 2FA <b>bool</b> variables you need:
-  - <b>settings.PasswordChange2FA</b>
+	- <b>settings.PasswordChange2FA</b>
 	- <b>settings.LoginChange2FA</b>
 	- <b>settings.UserCreate2FA</b>
 	- <b>settings.UserDelete2FA</b>
 	- <b>settings.TokenGet2FA</b>
+
+Login is some information, which is used for delivering temporary passwords to the user, it can be email, or phone number, or other, it just must be written as a string. You can change regular expression for login, changing <b>settings.LoginRegex</b>.
