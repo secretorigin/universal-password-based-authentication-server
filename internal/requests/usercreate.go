@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"regexp"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/field"
@@ -33,6 +34,17 @@ func UserCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if settings.DebugMode {
 			log.Println("Error: Can not decode requests body:", err.Error())
+		}
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	//check fields
+	if regexp.MustCompile(settings.LOGIN_REGEX).MatchString(body.Login) ||
+		regexp.MustCompile(settings.PASSWORD_REGEX).MatchString(body.Password) {
+		if settings.DebugMode {
+			log.Println("Error: Fields does not match regexp.")
 		}
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return

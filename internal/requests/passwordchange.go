@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"regexp"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/field"
@@ -39,6 +40,18 @@ func PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if settings.DebugMode {
 			log.Println("Error: Can not decode requests body:", err.Error())
+		}
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	//check fields
+	if regexp.MustCompile(settings.TOKEN_REGEX).MatchString(body.Access.Refresh_token) ||
+		regexp.MustCompile(settings.PASSWORD_REGEX).MatchString(body.Access.Password) ||
+		regexp.MustCompile(settings.PASSWORD_REGEX).MatchString(body.New_password) {
+		if settings.DebugMode {
+			log.Println("Error: Fields does not match regexp.")
 		}
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
@@ -98,9 +111,18 @@ func PasswordChange(w *http.ResponseWriter, data password_change_purpose_body) {
 		return
 	}
 
+	// generate new token for user
+	token_body := field.ParseTokenBody(data.Refresh_token)
+	var res response_password_change_body
+	res.Token, res.Refresh_token = database.UpdateToken(data.Refresh_token,
+		token_body.User_id, token_body.Token_id)
+	if res.Token == "" && res.Refresh_token == "" {
+		http.Error(*w, "Server error", http.StatusInternalServerError)
+	}
+
 	// delete all tokens if it's required
 	if data.Logout_everywhere {
-		_, err := database.DB.Query("DELETE FROM tokens WHERE user_id_=$1;", data.User_id)
+		_, err := database.DB.Query("DELETE FROM tokens WHERE user_id_=$1 AND NOT token_id_=$2;", data.User_id, token_body.Token_id)
 		if err != nil {
 			log.Println(err.Error())
 			if settings.DebugMode {
@@ -110,10 +132,5 @@ func PasswordChange(w *http.ResponseWriter, data password_change_purpose_body) {
 		}
 	}
 
-	// generate new token for user
-	token_body := field.ParseTokenBody(data.Refresh_token)
-	var res response_password_change_body
-	res.Token, res.Refresh_token = database.UpdateToken(data.Refresh_token,
-		token_body.User_id, token_body.Token_id)
 	writeResponse(w, res)
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
@@ -33,6 +34,17 @@ func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+	defer r.Body.Close()
+
+	//check fields
+	if regexp.MustCompile(settings.TOKEN_REGEX).MatchString(body.Access.Refresh_token) ||
+		regexp.MustCompile(settings.PASSWORD_REGEX).MatchString(body.Access.Password) {
+		if settings.DebugMode {
+			log.Println("Error: Fields does not match regexp.")
+		}
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
 
 	// check access part
 	token_body, check := database.CheckAccessPart(body.Access.Refresh_token, body.Access.Password)
@@ -56,6 +68,7 @@ func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
+
 		var res response_temporary_token_body
 		res.Temporary_token = createPartTimePassword(login, "delete", user_delete_purpose_body{
 			User_id: token_body.User_id})
@@ -76,6 +89,15 @@ func UserDelete(w *http.ResponseWriter, body user_delete_purpose_body) {
 		}
 		http.Error(*w, "Bad request", http.StatusBadRequest)
 		return
+	}
+
+	_, err = database.GetDB().Query("DELETE FROM tokens WHERE user_id_=$1;", body.User_id)
+	if err != nil {
+		log.Println(err.Error())
+		if settings.DebugMode {
+			log.Println("Error: Deleting tokens in database:", err.Error())
+		}
+		// where is not error for user, because it must understand that user deleted
 	}
 
 	(*w).WriteHeader(http.StatusOK)

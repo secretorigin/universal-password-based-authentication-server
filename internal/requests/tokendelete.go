@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/field"
@@ -30,6 +31,16 @@ func TokenDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if settings.DebugMode {
 			log.Println("Error: Can not decode requests body:", err.Error())
+		}
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	//check fields
+	if regexp.MustCompile(settings.TOKEN_REGEX).MatchString(body.Refresh_token) {
+		if settings.DebugMode {
+			log.Println("Error: Fields does not match regexp.")
 		}
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return

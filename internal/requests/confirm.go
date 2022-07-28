@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/field"
@@ -34,6 +35,18 @@ func ConfirmHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+	defer r.Body.Close()
+
+	//check fields
+	if regexp.MustCompile(settings.TOKEN_REGEX).MatchString(body.Temporary_token) ||
+		regexp.MustCompile(settings.TemporaryPasswordRegex).MatchString(body.Temporary_password) {
+		if settings.DebugMode {
+			log.Println("Error: Fields does not match regexp.")
+		}
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
 	// check password and token
 	token_body := field.ParseTemporaryTokenBody(body.Temporary_token)
 	if !database.CheckTemporaryToken(body.Temporary_token, token_body.Temporary_token_id) {
@@ -50,36 +63,74 @@ func ConfirmHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+
 	// get data and create response with purpose
 	var purpose string
 	var data []byte
-	err = database.DB.QueryRow("SELECT purpose_, data_ FROM temporary_passwords WHERE temporary_password_id_=$1;",
+	err = database.GetDB().QueryRow("SELECT purpose_, data_ FROM temporary_passwords WHERE temporary_password_id_=$1;",
 		token_body.Temporary_token_id).Scan(&purpose, &data)
+	if err != nil {
+		if settings.DebugMode {
+			log.Println("Error: Can not select temporary password data:", err.Error())
+		}
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
 
 	if purpose == "create" {
 		var stored_body request_user_create_body
 		err := json.Unmarshal(data, &stored_body)
-		json_error_handler(err, &w)
+		if err != nil {
+			if settings.DebugMode {
+				log.Println("Error: Can not decode requests body:", err.Error())
+			}
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
+		}
 		UserCreate(&w, &stored_body)
 	} else if purpose == "delete" {
 		var stored_body user_delete_purpose_body
 		err := json.Unmarshal(data, &stored_body)
-		json_error_handler(err, &w)
+		if err != nil {
+			if settings.DebugMode {
+				log.Println("Error: Can not decode requests body:", err.Error())
+			}
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
+		}
 		UserDelete(&w, stored_body)
 	} else if purpose == "token" {
 		var stored_body token_get_purpose_body
 		err := json.Unmarshal(data, &stored_body)
-		json_error_handler(err, &w)
+		if err != nil {
+			if settings.DebugMode {
+				log.Println("Error: Can not decode requests body:", err.Error())
+			}
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
+		}
 		TokenGet(&w, stored_body)
 	} else if purpose == "password" {
 		var stored_body password_change_purpose_body
 		err := json.Unmarshal(data, &stored_body)
-		json_error_handler(err, &w)
+		if err != nil {
+			if settings.DebugMode {
+				log.Println("Error: Can not decode requests body:", err.Error())
+			}
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
+		}
 		PasswordChange(&w, stored_body)
 	} else if purpose == "login" {
 		var stored_body login_change_purpose_body
 		err := json.Unmarshal(data, &stored_body)
-		json_error_handler(err, &w)
+		if err != nil {
+			if settings.DebugMode {
+				log.Println("Error: Can not decode requests body:", err.Error())
+			}
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
+		}
 		LoginChange(&w, stored_body)
 	} else {
 		if settings.DebugMode {
@@ -88,14 +139,16 @@ func ConfirmHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
-}
 
-func json_error_handler(err error, w *http.ResponseWriter) {
+	// delete old part time password
+	_, err = database.GetDB().Query("DELETE FROM temporary_passwords WHERE temporary_password_id_=$1;",
+		token_body.Temporary_token_id)
 	if err != nil {
 		if settings.DebugMode {
-			log.Println("Error: Can not decode requests body:", err.Error())
+			log.Println("Error: Can not delete temporary password:", err.Error())
 		}
-		http.Error(*w, "Server error", http.StatusInternalServerError)
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
 	}
 }
 
