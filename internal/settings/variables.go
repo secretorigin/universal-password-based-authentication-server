@@ -27,5 +27,6 @@ const (
 
 // other
 var (
+	// it will print errors if they will be in usage process
 	DebugMode bool = false
 )
