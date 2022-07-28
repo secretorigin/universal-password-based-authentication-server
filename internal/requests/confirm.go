@@ -38,7 +38,7 @@ func ConfirmHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	//check fields
-	if regexp.MustCompile(settings.TOKEN_REGEX).MatchString(body.Temporary_token) ||
+	if regexp.MustCompile(settings.TokenRegex).MatchString(body.Temporary_token) ||
 		regexp.MustCompile(settings.TemporaryPasswordRegex).MatchString(body.Temporary_password) {
 		if settings.DebugMode {
 			log.Println("Error: Fields does not match regexp.")

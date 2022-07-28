@@ -41,8 +41,8 @@ func UserCreateHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	//check fields
-	if regexp.MustCompile(settings.LOGIN_REGEX).MatchString(body.Login) ||
-		regexp.MustCompile(settings.PASSWORD_REGEX).MatchString(body.Password) {
+	if regexp.MustCompile(settings.LoginRegex).MatchString(body.Login) ||
+		regexp.MustCompile(settings.PasswordRegex).MatchString(body.Password) {
 		if settings.DebugMode {
 			log.Println("Error: Fields does not match regexp.")
 		}

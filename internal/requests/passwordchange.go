@@ -47,9 +47,9 @@ func PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	//check fields
-	if regexp.MustCompile(settings.TOKEN_REGEX).MatchString(body.Access.Refresh_token) ||
-		regexp.MustCompile(settings.PASSWORD_REGEX).MatchString(body.Access.Password) ||
-		regexp.MustCompile(settings.PASSWORD_REGEX).MatchString(body.New_password) {
+	if regexp.MustCompile(settings.TokenRegex).MatchString(body.Access.Refresh_token) ||
+		regexp.MustCompile(settings.PasswordRegex).MatchString(body.Access.Password) ||
+		regexp.MustCompile(settings.PasswordRegex).MatchString(body.New_password) {
 		if settings.DebugMode {
 			log.Println("Error: Fields does not match regexp.")
 		}
