@@ -43,7 +43,7 @@ func TokenUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	//check fields
-	if regexp.MustCompile(settings.TokenRegex).MatchString(body.Refresh_token) {
+	if !regexp.MustCompile(settings.TokenRegex).MatchString(body.Refresh_token) {
 		if settings.DebugMode {
 			log.Println("Error: Fields does not match regexp.")
 		}

@@ -24,12 +24,14 @@ func GenSalt(size int) []byte {
 type TemporaryTokenBody struct {
 	Temporary_token_id uint64 `json:"temporary_token_id"`
 	Creation_date      int64  `json:"creation_date"`
+	Login              string `json:"login"`
 }
 
 func GenTemporaryToken(salt []byte, body TemporaryTokenBody) string {
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"temporary_token_id": body.Temporary_token_id,
 		"creation_date":      body.Creation_date,
+		"login":              body.Login,
 	}).SignedString(salt)
 	if err != nil {
 		log.Println(err.Error())

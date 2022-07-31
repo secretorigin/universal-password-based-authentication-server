@@ -13,8 +13,8 @@ var (
 
 	TemporaryPasswordRegex string = ""
 	LoginRegex             string = "^[a-z][a-z0-9_]{4,14}[a-z0-9]$"
-	PasswordRegex          string = "^[A-Za-z\\d@$!%*#?&]{8,64}$"
-	TokenRegex             string = "^[A-Za-z0-9-_]*\\.[A-Za-z0-9-_]*\\.[A-Za-z0-9-_]*$"
+	PasswordRegex          string = `^[A-Za-z0-9\d@$!%*#?&_\-]{8,64}$`
+	TokenRegex             string = `^[A-Za-z0-9-_]*\.[A-Za-z0-9-_]*\.[A-Za-z0-9-_]*$`
 )
 
 // crypto parameters

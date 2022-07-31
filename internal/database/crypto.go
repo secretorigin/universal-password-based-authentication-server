@@ -62,7 +62,7 @@ func CheckTemporaryPassword(temporary_password string, temporary_password_id uin
 }
 
 // returning temporary token
-func GenTemporaryPassword(temporary_password string, purpose string, data interface{}) string {
+func GenTemporaryPassword(temporary_password string, purpose string, login string, data interface{}) string {
 	var temporary_password_id uint64
 
 	salt := field.GenSalt(settings.TOKEN_SALT_SIZE)
@@ -79,7 +79,29 @@ func GenTemporaryPassword(temporary_password string, purpose string, data interf
 		return ""
 	}
 
-	token := field.GenTemporaryToken(salt, field.TemporaryTokenBody{Temporary_token_id: temporary_password_id, Creation_date: time.Now().UTC().UnixNano()})
+	token := field.GenTemporaryToken(salt, field.TemporaryTokenBody{
+		Temporary_token_id: temporary_password_id,
+		Creation_date:      time.Now().UTC().UnixNano(),
+		Login:              login})
+
+	return token
+}
+
+// update temporary password (sending new code)
+func UpdateTemporaryPassword(temporary_password string, login string, temporary_password_id uint64) string {
+	salt := field.GenSalt(settings.TOKEN_SALT_SIZE)
+
+	_, err := GetDB().Query("UPDATE temporary_passwords SET password_=$1, salt_=$2 WHERE temporary_password_id_=$3;",
+		temporary_password, hex.EncodeToString(salt), temporary_password_id)
+	if err != nil {
+		log.Println(err.Error())
+		return ""
+	}
+
+	token := field.GenTemporaryToken(salt, field.TemporaryTokenBody{
+		Temporary_token_id: temporary_password_id,
+		Creation_date:      time.Now().UTC().UnixNano(),
+		Login:              login})
 
 	return token
 }
