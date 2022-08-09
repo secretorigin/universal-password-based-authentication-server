@@ -16,8 +16,17 @@ type request_confirm_post_body struct {
 	Temporary_password string `json:"temporary_password"`
 }
 
+func (r *request_confirm_post_body) Validate() bool {
+	return (regexp.MustCompile(settings.TokenRegex).MatchString(r.Temporary_token) &&
+		regexp.MustCompile(settings.TemporaryPasswordRegex).MatchString(r.Temporary_password))
+}
+
 type request_confirm_patch_body struct {
 	Temporary_token string `json:"temporary_token"`
+}
+
+func (r *request_confirm_patch_body) Validate() bool {
+	return regexp.MustCompile(settings.TokenRegex).MatchString(r.Temporary_token)
 }
 
 type response_confirm_patch_body struct {
@@ -56,7 +65,7 @@ func confirmPatch(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	//check fields
-	if !regexp.MustCompile(settings.TokenRegex).MatchString(body.Temporary_token) {
+	if !body.Validate() {
 		if settings.DebugMode {
 			log.Println("Error: Fields does not match regexp.")
 		}
@@ -75,8 +84,12 @@ func confirmPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	temporary_password := settings.TemporaryPasswordSend(token_body.Login)
+	token := database.UpdateTemporaryPassword(
+		temporary_password,
+		token_body.Login,
+		token_body.Temporary_token_id)
 	res := response_confirm_patch_body{
-		Temporary_token: database.UpdateTemporaryPassword(temporary_password, token_body.Login, token_body.Temporary_token_id)}
+		Temporary_token: token}
 
 	writeResponse(&w, res)
 }
@@ -95,8 +108,7 @@ func confirmPost(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	//check fields
-	if !(regexp.MustCompile(settings.TokenRegex).MatchString(body.Temporary_token) &&
-		regexp.MustCompile(settings.TemporaryPasswordRegex).MatchString(body.Temporary_password)) {
+	if !body.Validate() {
 		if settings.DebugMode {
 			log.Println("Error: Fields does not match regexp.")
 		}

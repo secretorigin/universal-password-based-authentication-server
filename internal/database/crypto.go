@@ -205,3 +205,13 @@ func CheckPassword(id uint64, password string) bool {
 
 	return field.CheckPassword(bytes, []byte(password), iterations)
 }
+
+func CheckLoginUnique(login string) bool {
+	var user_id uint64
+	err := GetDB().QueryRow("SELECT user_id_ FROM users WHERE login_=$1;", login).Scan(&user_id)
+	if err == sql.ErrNoRows {
+		return true
+	} else {
+		return false
+	}
+}

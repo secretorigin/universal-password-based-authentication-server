@@ -40,7 +40,8 @@ func LoginChangeHandler(w http.ResponseWriter, r *http.Request) {
 	//check fields
 	if !(regexp.MustCompile(settings.TokenRegex).MatchString(body.Access.Refresh_token) &&
 		regexp.MustCompile(settings.PasswordRegex).MatchString(body.Access.Password) &&
-		regexp.MustCompile(settings.LoginRegex).MatchString(body.New_login)) {
+		regexp.MustCompile(settings.LoginRegex).MatchString(body.New_login) &&
+		database.CheckLoginUnique(body.New_login)) {
 		if settings.DebugMode {
 			log.Println("Error: Fields does not match regexp.")
 		}

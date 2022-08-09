@@ -32,5 +32,6 @@ func OpenDB(conf settings.DBConf) {
 }
 
 func GetDB() *sql.DB {
+
 	return DB
 }
