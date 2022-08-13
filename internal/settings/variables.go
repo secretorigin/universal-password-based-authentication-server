@@ -23,6 +23,7 @@ const (
 	PASSWORD_HASH_LENGTH          = 32
 	PASSWORD_SALT_SIZE            = 16
 	TOKEN_SALT_SIZE               = 16
+	RESPONSE_MAX_TIME             = 500
 )
 
 // other

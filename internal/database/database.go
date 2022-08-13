@@ -32,6 +32,16 @@ func OpenDB(conf settings.DBConf) {
 }
 
 func GetDB() *sql.DB {
-
 	return DB
+}
+
+// some common functions
+func CheckLoginUnique(login string) bool {
+	var user_id uint64
+	err := GetDB().QueryRow("SELECT user_id_ FROM users WHERE login_=$1;", login).Scan(&user_id)
+	if err == sql.ErrNoRows {
+		return true
+	} else {
+		return false
+	}
 }

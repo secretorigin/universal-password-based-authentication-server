@@ -1,100 +1,71 @@
 package requests
 
 import (
-	"database/sql"
 	"encoding/json"
-	"log"
 	"net/http"
 	"regexp"
 
+	"github.com/p2034/universal-password-based-authentication-server/internal/apierror"
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type request_token_get_body struct {
+type Token_get struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
 
-type response_token_get_body struct {
-	Token         string `json:"token"`
-	Refresh_token string `json:"refresh_token"`
-}
-
-// /user/create or /register request handler
-func TokenGetHandler(w http.ResponseWriter, r *http.Request) {
+func (request Token_get) Init(r *http.Request) apierror.APIError {
 	if r.URL.Path != "/token/get" || r.Method != "POST" {
-		if settings.DebugMode {
-			log.Println("Error: Wrong url for /token/get POST:", r.URL.Path, r.Method)
-		}
-		http.Error(w, "404 not found.", http.StatusNotFound)
-		return
+		return apierror.NotFound
 	}
 
-	// get data from request
-	var body request_token_get_body
-	err := json.NewDecoder(r.Body).Decode(&body)
-	if err != nil {
-		if settings.DebugMode {
-			log.Println("Error: Can not decode requests body:", err.Error())
-		}
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	//check fields
-	if !(regexp.MustCompile(settings.LoginRegex).MatchString(body.Login) &&
-		regexp.MustCompile(settings.PasswordRegex).MatchString(body.Password)) {
-		if settings.DebugMode {
-			log.Println("Error: Fields does not match regexp.")
-		}
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-
-	// get user_id
-	var user_id uint64
-	err = database.DB.QueryRow("SELECT user_id_ FROM users WHERE login_=$1;", body.Login).Scan(&user_id)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			log.Println(err.Error())
-		} else if settings.DebugMode {
-			log.Println("Error: User not found:", err.Error())
-		}
-		http.Error(w, "Bad request", 400)
-		return
-	}
-	// check password
-	if !database.CheckPassword(user_id, body.Password) {
-		http.Error(w, "Bad request", 400)
-		if settings.DebugMode {
-			log.Println("Error: Wrong password.")
-		}
-		return
-	}
-
-	if settings.TokenGet2FA {
-		// create temporaty password with purpose 'login'
-		var res response_temporary_token_body
-		res.Temporary_token = createPartTimePassword(body.Login, "token", token_get_purpose_body{User_id: user_id})
-		writeResponse(&w, res)
-	} else {
-		// generate new token for user
-		TokenGet(&w, token_get_purpose_body{User_id: user_id})
-	}
+	return nil
 }
 
-func TokenGet(w *http.ResponseWriter, body token_get_purpose_body) {
-	var res response_token_get_body
-	res.Token, res.Refresh_token = database.GenToken(body.User_id)
-	if res.Token == "" || res.Refresh_token == "" {
-		http.Error(*w, "Bad request", 400)
-		if settings.DebugMode {
-			log.Println("Error: creating token.")
-		}
-		return
+func (request Token_get) Validate() apierror.APIError {
+	if !(regexp.MustCompile(settings.LoginRegex).MatchString(request.Login) &&
+		regexp.MustCompile(settings.PasswordRegex).MatchString(request.Password)) {
+		return apierror.FieldFormat
 	}
 
-	writeResponse(w, res)
+	return nil
+}
+
+func (request Token_get) Do(w http.ResponseWriter) apierror.APIError {
+	user := database.User{Cache: database.UserCache{Login: request.Login}}
+	ok, err := user.Check(request.Password)
+	if err != nil {
+		return apierror.InternalServerError
+	}
+	if !ok {
+		return apierror.Password
+	}
+
+	purpose := token_get_purpose{User_id: user.Cache.Id}
+	return process2FAVariablePurpose(w, purpose, request.Login, settings.TokenGet2FA)
+}
+
+type token_get_purpose struct {
+	User_id uint64 `json:"user_id"`
+}
+
+func (p token_get_purpose) Do(w http.ResponseWriter) apierror.APIError {
+	token := database.Token{Cache: database.TokenCache{User_id: p.User_id}}
+	tokens, err := token.New()
+	if err != nil {
+		return apierror.InternalServerError
+	}
+
+	SetResponse(w, tokens, http.StatusOK)
+	return nil
+}
+
+func (p token_get_purpose) Name() string {
+	return "token"
+}
+
+func (p token_get_purpose) Encode() []byte {
+	body, _ := json.Marshal(p)
+	return body
 }

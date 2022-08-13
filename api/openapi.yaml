@@ -221,7 +221,7 @@ paths:
         '400':
           description: Wrong token
   /confirm:
-    patch:
+    post:
       description: >-
         Confirm some actions for Account managment or Access managment
         (user/create, user/delete, token/get, password/change, login/change). It can return different json's for different situations (see base requests).
@@ -235,12 +235,32 @@ paths:
               $ref: '#/components/schemas/temporary_login_data'
       responses:
         '200':
-          description: All is ok, user is created
+          description: All is ok
           content:
             application/json:
               schema:
                 oneOf:
                   - $ref: '#/components/schemas/token_data'
+        '400':
+          description: Wrong temporary password or user id
+    patch:
+      description: >-
+        Used for resending temporary password.
+      tags:
+        - Additional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/confirmation_token'
+      responses:
+        '200':
+          description: All is ok, new code sended and new token created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/confirmation_token'
         '400':
           description: Wrong temporary password or user id
           

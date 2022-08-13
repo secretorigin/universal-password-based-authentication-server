@@ -1,136 +1,108 @@
 package requests
 
 import (
-	"encoding/hex"
 	"encoding/json"
-	"log"
-	"math/rand"
 	"net/http"
 	"regexp"
 
+	"github.com/p2034/universal-password-based-authentication-server/internal/apierror"
+	"github.com/p2034/universal-password-based-authentication-server/internal/crypto"
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
-	"github.com/p2034/universal-password-based-authentication-server/internal/field"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type request_password_change_body struct {
-	Access            access_body_part `json:"access"`
-	New_password      string           `json:"new_password"`
-	Logout_everywhere bool             `json:"logout_everywhere"`
+type Password_change struct {
+	Access            access_part `json:"access"`
+	New_password      string      `json:"new_password"`
+	Logout_everywhere bool        `json:"logout_everywhere"`
 }
 
-type response_password_change_body struct {
-	Token         string `json:"token"`
-	Refresh_token string `json:"refresh_token"`
-}
-
-// /user/create or /register request handler
-func PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
+func (request Password_change) Init(r *http.Request) apierror.APIError {
 	if r.URL.Path != "/password/change" || r.Method != "PATCH" {
-		if settings.DebugMode {
-			log.Println("Error: Wrong url for /password/change PATCH:", r.URL.Path, r.Method)
-		}
-		http.Error(w, "404 not found.", http.StatusNotFound)
-		return
+		return apierror.NotFound
 	}
 
-	// get data from request
-	var body request_password_change_body
-	err := json.NewDecoder(r.Body).Decode(&body)
-	if err != nil {
-		if settings.DebugMode {
-			log.Println("Error: Can not decode requests body:", err.Error())
-		}
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	//check fields
-	if !(regexp.MustCompile(settings.TokenRegex).MatchString(body.Access.Refresh_token) &&
-		regexp.MustCompile(settings.PasswordRegex).MatchString(body.Access.Password) &&
-		regexp.MustCompile(settings.PasswordRegex).MatchString(body.New_password)) {
-		if settings.DebugMode {
-			log.Println("Error: Fields does not match regexp.")
-		}
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-
-	// check access part
-	token_body, check := database.CheckAccessPart(body.Access.Refresh_token, body.Access.Password)
-	if !check {
-		if settings.DebugMode {
-			log.Println("Error: Wrong access part.")
-		}
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-
-	if settings.PasswordChange2FA {
-		// create temporaty password with purpose 'password'
-		// get login
-		var login string
-		err = database.DB.QueryRow("SELECT login_ FROM users WHERE user_id_=$1;", token_body.User_id).Scan(&login)
-		if err != nil {
-			if settings.DebugMode {
-				log.Println("Error: Can not find user:", err.Error())
-			}
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			return
-		}
-
-		var res response_temporary_token_body
-		res.Temporary_token = createPartTimePassword(login, "password", password_change_purpose_body{
-			User_id:           token_body.User_id,
-			New_password:      body.New_password,
-			Logout_everywhere: body.Logout_everywhere,
-			Refresh_token:     body.Access.Refresh_token})
-		writeResponse(&w, res)
-	} else {
-		// cahnge password
-		PasswordChange(&w, password_change_purpose_body{
-			User_id:           token_body.User_id,
-			New_password:      body.New_password,
-			Logout_everywhere: body.Logout_everywhere,
-			Refresh_token:     body.Access.Refresh_token})
-	}
+	return nil
 }
 
-func PasswordChange(w *http.ResponseWriter, data password_change_purpose_body) {
-	iterations := rand.Int31()%1000 + settings.PASSWORD_MIN_ITERATIONS_COUNT
-	hash := field.HashPassword(field.GenSalt(settings.PASSWORD_SALT_SIZE), []byte(data.New_password), int(iterations))
-	_, err := database.DB.Query("UPDATE users SET password_hash_=$1, password_iterations_=$2 WHERE user_id_=$3;",
-		hex.EncodeToString(hash), iterations, data.User_id)
-	if err != nil {
-		log.Println(err.Error())
-		if settings.DebugMode {
-			log.Println("Error: Inserting new password in database:", err.Error())
-		}
-		http.Error(*w, "Bad request", http.StatusBadRequest)
-		return
+func (request Password_change) Validate() apierror.APIError {
+	if !(regexp.MustCompile(settings.TokenRegex).MatchString(request.Access.Refresh_token) &&
+		regexp.MustCompile(settings.PasswordRegex).MatchString(request.Access.Password) &&
+		regexp.MustCompile(settings.PasswordRegex).MatchString(request.New_password)) {
+		return apierror.FieldFormat
 	}
 
-	// generate new token for user
-	token_body := field.ParseTokenBody(data.Refresh_token)
-	var res response_password_change_body
-	res.Token, res.Refresh_token = database.UpdateToken(data.Refresh_token,
-		token_body.User_id, token_body.Token_id)
-	if res.Token == "" && res.Refresh_token == "" {
-		http.Error(*w, "Server error", http.StatusInternalServerError)
+	return nil
+}
+
+func (request Password_change) Do(w http.ResponseWriter) apierror.APIError {
+	var user database.User
+	var token database.Token
+	err := CheckAccessPart(request.Access, &token, &user)
+	if err != nil {
+		return apierror.AuthenticationInfo
+	}
+
+	purpose := password_change_purpose{
+		User_id:           user.Cache.Id,
+		New_password:      request.New_password,
+		Logout_everywhere: request.Logout_everywhere,
+		Refresh_token:     request.Access.Refresh_token}
+	return process2FAVariablePurpose(w, purpose, user.Cache.Login, settings.PasswordChange2FA)
+}
+
+type password_change_purpose struct {
+	User_id           uint64 `json:"user_id"`
+	New_password      string `json:"new_password"`
+	Logout_everywhere bool   `json:"logout_everywhere"`
+	Refresh_token     string `json:"refresh_token"`
+}
+
+func (p password_change_purpose) Do(w http.ResponseWriter) apierror.APIError {
+	user := database.User{Cache: database.UserCache{Id: p.User_id}}
+	err := user.ChangePassword(p.New_password)
+	if err != nil {
+		return apierror.InternalServerError
+	}
+
+	token_body, err := crypto.ParseToken(p.Refresh_token)
+	if err != nil {
+		return apierror.AuthenticationInfo
+	}
+
+	// check refresh token
+	token := database.Token{Cache: database.TokenCache{Id: token_body.Token_id}}
+	_, ok, err := token.Check("", p.Refresh_token)
+	if err != nil {
+		return apierror.AuthenticationInfo
+	}
+	if !ok {
+		return apierror.AuthenticationInfo
+	}
+
+	// update tokens
+	tokens, err := token.UpdateToken()
+	if err != nil {
+		return apierror.InternalServerError
 	}
 
 	// delete all tokens if it's required
-	if data.Logout_everywhere {
-		_, err := database.DB.Query("DELETE FROM tokens WHERE user_id_=$1 AND NOT token_id_=$2;", data.User_id, token_body.Token_id)
+	if p.Logout_everywhere {
+		err = user.LogoutEverywhere(token.Cache.Id)
 		if err != nil {
-			log.Println(err.Error())
-			if settings.DebugMode {
-				log.Println("Error: Deleting tokens in database:", err.Error())
-			}
-			// where is not error for user, because it must understand that password changes
+			return apierror.InternalServerError
 		}
 	}
 
-	writeResponse(w, res)
+	SetResponse(w, tokens, http.StatusOK)
+	return nil
+}
+
+func (p password_change_purpose) Name() string {
+	return "password"
+}
+
+func (p password_change_purpose) Encode() []byte {
+	body, _ := json.Marshal(p)
+	return body
 }

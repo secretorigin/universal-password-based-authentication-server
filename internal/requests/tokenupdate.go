@@ -1,60 +1,57 @@
 package requests
 
 import (
-	"encoding/json"
-	"log"
 	"net/http"
 	"regexp"
 
+	"github.com/p2034/universal-password-based-authentication-server/internal/apierror"
+	"github.com/p2034/universal-password-based-authentication-server/internal/crypto"
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
-	"github.com/p2034/universal-password-based-authentication-server/internal/field"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type request_token_update_body struct {
+type Token_update struct {
 	Refresh_token string `json:"refresh_token"`
 }
 
-type response_token_update_body struct {
-	Token         string `json:"token"`
-	Refresh_token string `json:"refresh_token"`
-}
-
-// /user/create or /register request handler
-func TokenUpdateHandler(w http.ResponseWriter, r *http.Request) {
+func (request Token_update) Init(r *http.Request) apierror.APIError {
 	if r.URL.Path != "/token/update" || r.Method != "PATCH" {
-		if settings.DebugMode {
-			log.Println("Error: Wrong url for /token/update PATCH:", r.URL.Path, r.Method)
-		}
-		http.Error(w, "404 not found.", http.StatusNotFound)
-		return
+		return apierror.NotFound
 	}
 
-	// get data from request
-	var body request_token_update_body
-	err := json.NewDecoder(r.Body).Decode(&body)
+	return nil
+}
+
+func (request Token_update) Validate() apierror.APIError {
+	if !regexp.MustCompile(settings.TokenRegex).MatchString(request.Refresh_token) {
+		return apierror.FieldFormat
+	}
+
+	return nil
+}
+
+func (request Token_update) Do(w http.ResponseWriter) apierror.APIError {
+	token_body, err := crypto.ParseToken(request.Refresh_token)
 	if err != nil {
-		if settings.DebugMode {
-			log.Println("Error: Can not decode requests body:", err.Error())
-		}
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	//check fields
-	if !regexp.MustCompile(settings.TokenRegex).MatchString(body.Refresh_token) {
-		if settings.DebugMode {
-			log.Println("Error: Fields does not match regexp.")
-		}
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
+		return apierror.AuthenticationInfo
 	}
 
-	token_body := field.ParseTokenBody(body.Refresh_token)
-	var res response_token_update_body
-	res.Token, res.Refresh_token = database.UpdateToken(body.Refresh_token,
-		token_body.User_id, token_body.Token_id)
+	// check refresh token
+	token := database.Token{Cache: database.TokenCache{Id: token_body.Token_id}}
+	_, ok, err := token.Check("", request.Refresh_token)
+	if err != nil {
+		return apierror.AuthenticationInfo
+	}
+	if !ok {
+		return apierror.AuthenticationInfo
+	}
 
-	writeResponse(&w, res)
+	// update tokens
+	tokens, err := token.UpdateToken()
+	if err != nil {
+		return apierror.InternalServerError
+	}
+
+	SetResponse(w, tokens, 200)
+	return nil
 }

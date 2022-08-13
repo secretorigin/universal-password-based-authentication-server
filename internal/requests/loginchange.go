@@ -2,90 +2,75 @@ package requests
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"regexp"
 
+	"github.com/p2034/universal-password-based-authentication-server/internal/apierror"
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type request_login_change_body struct {
-	Access    access_body_part `json:"access"`
-	New_login string           `json:"new_login"`
+type Login_change struct {
+	Access    access_part `json:"access"`
+	New_login string      `json:"new_login"`
 }
 
-// /user/create or /register request handler
-func LoginChangeHandler(w http.ResponseWriter, r *http.Request) {
+func (request Login_change) Init(r *http.Request) apierror.APIError {
 	if r.URL.Path != "/login/change" || r.Method != "PATCH" {
-		if settings.DebugMode {
-			log.Println("Error: Wrong url for /login/change PATCH:", r.URL.Path, r.Method)
-		}
-		http.Error(w, "404 not found.", http.StatusNotFound)
-		return
+		return apierror.NotFound
 	}
 
-	// get data from request
-	var body request_login_change_body
-	err := json.NewDecoder(r.Body).Decode(&body)
-	if err != nil {
-		if settings.DebugMode {
-			log.Println("Error: Can not decode requests body:", err.Error())
-		}
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	//check fields
-	if !(regexp.MustCompile(settings.TokenRegex).MatchString(body.Access.Refresh_token) &&
-		regexp.MustCompile(settings.PasswordRegex).MatchString(body.Access.Password) &&
-		regexp.MustCompile(settings.LoginRegex).MatchString(body.New_login) &&
-		database.CheckLoginUnique(body.New_login)) {
-		if settings.DebugMode {
-			log.Println("Error: Fields does not match regexp.")
-		}
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-
-	// check access part
-	token_body, check := database.CheckAccessPart(body.Access.Refresh_token, body.Access.Password)
-	if !check {
-		if settings.DebugMode {
-			log.Println("Error: Wrong access part.")
-		}
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-
-	if settings.PasswordChange2FA {
-		// create temporaty password with purpose 'login'
-		var res response_temporary_token_body
-		// send temporary token with new login
-		res.Temporary_token = createPartTimePassword(body.New_login, "login", login_change_purpose_body{
-			User_id:   token_body.User_id,
-			New_login: body.New_login})
-		writeResponse(&w, res)
-	} else {
-		// cahnge password
-		LoginChange(&w, login_change_purpose_body{
-			User_id:   token_body.User_id,
-			New_login: body.New_login})
-	}
+	return nil
 }
 
-func LoginChange(w *http.ResponseWriter, data login_change_purpose_body) {
-	_, err := database.DB.Query("UPDATE users SET login_=$1 WHERE user_id_=$2;",
-		data.New_login, data.User_id)
-	if err != nil {
-		log.Println(err.Error())
-		if settings.DebugMode {
-			log.Println("Error: Inserting new login in database:", err.Error())
-		}
-		http.Error(*w, "Bad request", http.StatusBadRequest)
-		return
+func (request Login_change) Validate() apierror.APIError {
+	if !(regexp.MustCompile(settings.TokenRegex).MatchString(request.Access.Refresh_token) &&
+		regexp.MustCompile(settings.PasswordRegex).MatchString(request.Access.Password) &&
+		regexp.MustCompile(settings.LoginRegex).MatchString(request.New_login)) {
+		return apierror.FieldFormat
 	}
 
-	(*w).WriteHeader(http.StatusOK)
+	if !database.CheckLoginUnique(request.New_login) {
+		return apierror.LoginAlreadyExist
+	}
+
+	return nil
+}
+
+func (request Login_change) Do(w http.ResponseWriter) apierror.APIError {
+	var user database.User
+	var token database.Token
+	err := CheckAccessPart(request.Access, &token, &user)
+	if err != nil {
+		return apierror.AuthenticationInfo
+	}
+
+	purpose := login_change_purpose{User_id: user.Cache.Id, New_login: request.New_login}
+	process2FAVariablePurpose(w, purpose, request.New_login, settings.UserCreate2FA)
+	return nil
+}
+
+type login_change_purpose struct {
+	User_id   uint64 `json:"user_id"`
+	New_login string `json:"new_login"`
+}
+
+func (p login_change_purpose) Do(w http.ResponseWriter) apierror.APIError {
+	user := database.User{Cache: database.UserCache{Id: p.User_id}}
+	err := user.ChangeLogin(p.New_login)
+	if err != nil {
+		return apierror.InternalServerError
+	}
+
+	SetResponse(w, nil, http.StatusOK)
+	return nil
+}
+
+func (p login_change_purpose) Name() string {
+	return "login"
+}
+
+func (p login_change_purpose) Encode() []byte {
+	body, _ := json.Marshal(p)
+	return body
 }
