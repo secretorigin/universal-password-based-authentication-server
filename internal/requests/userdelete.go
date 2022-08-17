@@ -51,13 +51,13 @@ func User_delete(w http.ResponseWriter, r *http.Request) {
 		ErrorHandler(w, apierror.New(err, "Can get user's login", "Internal Server Error", 500))
 		return
 	}
-	apierr = process2FAVariablePurpose(w, purpose, user.String, settings.UserDelete2FA)
+	res, apierr := process2FAVariablePurpose(w, purpose, user.String, settings.UserDelete2FA)
 	if apierr != nil {
 		ErrorHandler(w, apierr)
 		return
 	}
 
-	SetResponse(w, nil, http.StatusOK)
+	SetResponse(w, res, http.StatusOK)
 }
 
 // purpose when 2FA is activated

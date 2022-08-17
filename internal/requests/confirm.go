@@ -67,20 +67,20 @@ func Confirm(w http.ResponseWriter, r *http.Request) {
 		var p Purpose
 		switch purpose.Name {
 		case "create":
-			p = user_create_purpose{}
+			p = &user_create_purpose{}
 		case "delete":
-			p = user_delete_purpose{}
+			p = &user_delete_purpose{}
 		case "token":
-			p = token_get_purpose{}
+			p = &token_get_purpose{}
 		case "password":
-			p = password_change_purpose{}
+			p = &password_change_purpose{}
 		case "login":
-			p = login_change_purpose{}
+			p = &login_change_purpose{}
 		default:
 			ErrorHandler(w, apierror.New(err, "Undefined purpose", "Internal Server Error", 500))
 			return
 		}
-		err = json.Unmarshal([]byte(purpose.Data), &p)
+		err = json.Unmarshal([]byte(purpose.Data), p)
 		if err != nil {
 			ErrorHandler(w, apierror.New(err, "can not unmarshal purpose body", "Internal Server Error", 500))
 			return

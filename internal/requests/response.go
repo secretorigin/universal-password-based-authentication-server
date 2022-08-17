@@ -25,10 +25,9 @@ func SetResponse(w http.ResponseWriter, res interface{}, status int) {
 func ErrorHandler(w http.ResponseWriter, err apierror.APIError) {
 	// loging error
 	if settings.DebugMode {
-		if err != nil {
-			log.Print("Error: ", err.Error(), ", ")
-		}
-		log.Println("Msg to the user:", err.Debug(), err.Status())
+		log.Print("Error: ", err.Error(), ", debug: ", err.Debug(), ", status: ", err.Status())
+	} else {
+		log.Print("Error: ", err.Error())
 	}
 	SetResponse(w, ErrorBody{Error: err.Msg()}, err.Status())
 }

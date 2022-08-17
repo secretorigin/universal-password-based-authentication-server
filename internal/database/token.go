@@ -133,7 +133,7 @@ func (token *Token) Update(user_id *uint64) (Token, error) {
 	var refresh_salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
 
 	// insert in database
-	_, err := GetDB().Query("UPDATE tokens SET salt_=$1, refresh_salt_=$2 WHERE token_id=$3;",
+	_, err := GetDB().Query("UPDATE tokens SET salt_=$1, refresh_salt_=$2 WHERE token_id_=$3;",
 		hex.EncodeToString(salt), hex.EncodeToString(refresh_salt), token.Uint64)
 	if err != nil {
 		return Token{String: ""}, err
@@ -178,7 +178,7 @@ func (token Token) Delete(refresh_token_str string) error {
 		token.Uint64 = body.Id
 	}
 
-	_, err := GetDB().Query("DELETE FROM tokens WHERE token_id=$1;", token.Uint64)
+	_, err := GetDB().Query("DELETE FROM tokens WHERE token_id_=$1;", token.Uint64)
 	if err != nil {
 		return err
 	}

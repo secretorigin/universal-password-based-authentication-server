@@ -10,7 +10,7 @@ import (
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-const TEMPORARY_TOKEN_TYPE = "tempprary"
+const TEMPORARY_TOKEN_TYPE = "temporary"
 
 type TemporaryToken struct {
 	String string
@@ -27,6 +27,7 @@ func (token TemporaryToken) Check(password string, login *Login) (bool, error) {
 	if body.Type != TEMPORARY_TOKEN_TYPE {
 		return false, errors.New("wrong token type")
 	}
+	login.String = body.Login
 
 	var salt string
 	var password_from_db string
@@ -35,7 +36,7 @@ func (token TemporaryToken) Check(password string, login *Login) (bool, error) {
 			body.Id).Scan(&salt)
 	} else {
 		err = GetDB().QueryRow("SELECT salt_, password_ FROM temporary_passwords WHERE temporary_password_id_=$1;",
-			body.Id).Scan(&salt, password_from_db)
+			body.Id).Scan(&salt, &password_from_db)
 	}
 	if err != nil {
 		return false, err
@@ -47,6 +48,9 @@ func (token TemporaryToken) Check(password string, login *Login) (bool, error) {
 	}
 
 	ok, err := body.Check(token.String, salt_bytes)
+	if err != nil {
+		return false, err
+	}
 	if !ok {
 		return false, errors.New("wrong token")
 	}
@@ -71,7 +75,7 @@ func (token *TemporaryToken) New(login string, purpose string, data interface{})
 	}
 
 	// insert in database and send temporary password
-	err = GetDB().QueryRow("INSERT INTO temporary_passwords (purpose_, data, password_, salt_) VALUES ($1, $2, $3) RETURNING temporary_password_id_;",
+	err = GetDB().QueryRow("INSERT INTO temporary_passwords (purpose_, data_, password_, salt_) VALUES ($1, $2, $3, $4) RETURNING temporary_password_id_;",
 		purpose, string(data_bytes), settings.TemporaryPasswordSend(login), hex.EncodeToString(salt)).Scan(&token.Uint64)
 	if err != nil {
 		return err
@@ -172,7 +176,7 @@ func (token *TemporaryToken) GetPurpose() (Purpose, error) {
 	}
 
 	// insert salt in database and resend temporary password
-	err := GetDB().QueryRow("SELECT purposes_, data_ FROM temporary_passwords WHERE temporary_password_id_=$1;",
+	err := GetDB().QueryRow("SELECT purpose_, data_ FROM temporary_passwords WHERE temporary_password_id_=$1;",
 		token.Uint64).Scan(&purpose.Name, &purpose.Data)
 	return purpose, err
 }

@@ -19,7 +19,7 @@ func (user User) New(password Password) error {
 	cache := userCache{passwordCache: password.Gen(), Login: user.String}
 	err := GetDB().QueryRow(
 		"INSERT INTO users (login_, password_hash_, password_iterations_) VALUES "+
-			"($1, $2, $3) RETURNING user_id;",
+			"($1, $2, $3) RETURNING user_id_;",
 		cache.Login, hex.EncodeToString(cache.Hash), cache.Iterations,
 	).Scan(&user.Uint64)
 	return err

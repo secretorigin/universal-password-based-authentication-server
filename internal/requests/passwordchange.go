@@ -1,7 +1,6 @@
 package requests
 
 import (
-	"encoding/json"
 	"net/http"
 	"regexp"
 
@@ -58,13 +57,13 @@ func Password_change(w http.ResponseWriter, r *http.Request) {
 		New_password:      body.New_password,
 		Logout_everywhere: body.Logout_everywhere,
 		Refresh_token:     body.Access.Refresh_token}
-	apierr = process2FAVariablePurpose(w, purpose, user.String, settings.PasswordChange2FA)
+	res, apierr := process2FAVariablePurpose(w, purpose, user.String, settings.PasswordChange2FA)
 	if apierr != nil {
 		ErrorHandler(w, apierr)
 		return
 	}
 
-	SetResponse(w, nil, http.StatusOK)
+	SetResponse(w, res, http.StatusOK)
 }
 
 type password_change_purpose struct {
@@ -83,8 +82,11 @@ func (p password_change_purpose) Do(w http.ResponseWriter) apierror.APIError {
 	}
 
 	// gen new token
-	token := database.Token{Uint64: 0}
+	token := database.Token{Uint64: 0, String: p.Refresh_token}
 	refresh_token, err := token.Update(&p.User_id)
+	if err != nil {
+		return apierror.New(err, "Can't update token", "Internal Server Error", 500)
+	}
 
 	SetResponse(w, response_token_get{
 		Token:         token.String,
@@ -95,9 +97,4 @@ func (p password_change_purpose) Do(w http.ResponseWriter) apierror.APIError {
 
 func (p password_change_purpose) Name() string {
 	return "password"
-}
-
-func (p password_change_purpose) Encode() []byte {
-	body, _ := json.Marshal(p)
-	return body
 }

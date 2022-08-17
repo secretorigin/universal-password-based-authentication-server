@@ -1,7 +1,6 @@
 package requests
 
 import (
-	"encoding/json"
 	"net/http"
 	"regexp"
 
@@ -57,11 +56,13 @@ func Token_get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	purpose := token_get_purpose{User_id: user.Uint64}
-	apierr = process2FAVariablePurpose(w, purpose, body.Login, settings.TokenGet2FA)
+	res, apierr := process2FAVariablePurpose(w, purpose, body.Login, settings.TokenGet2FA)
 	if apierr != nil {
 		ErrorHandler(w, apierr)
 		return
 	}
+
+	SetResponse(w, res, http.StatusOK)
 	return
 }
 
@@ -85,11 +86,6 @@ func (p token_get_purpose) Do(w http.ResponseWriter) apierror.APIError {
 
 func (p token_get_purpose) Name() string {
 	return "token"
-}
-
-func (p token_get_purpose) Encode() []byte {
-	body, _ := json.Marshal(p)
-	return body
 }
 
 type response_token_get struct {

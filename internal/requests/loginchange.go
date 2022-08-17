@@ -1,7 +1,6 @@
 package requests
 
 import (
-	"encoding/json"
 	"net/http"
 	"regexp"
 
@@ -52,12 +51,13 @@ func Login_change(w http.ResponseWriter, r *http.Request) {
 	}
 
 	purpose := login_change_purpose{User_id: user.Uint64, New_login: body.New_login}
-	apierr = process2FAVariablePurpose(w, purpose, body.New_login, settings.UserCreate2FA)
+	res, apierr := process2FAVariablePurpose(w, purpose, body.New_login, settings.UserCreate2FA)
 	if apierr != nil {
 		ErrorHandler(w, apierr)
 		return
 	}
-	return
+
+	SetResponse(w, res, http.StatusOK)
 }
 
 type login_change_purpose struct {
@@ -78,9 +78,4 @@ func (p login_change_purpose) Do(w http.ResponseWriter) apierror.APIError {
 
 func (p login_change_purpose) Name() string {
 	return "login"
-}
-
-func (p login_change_purpose) Encode() []byte {
-	body, _ := json.Marshal(p)
-	return body
 }

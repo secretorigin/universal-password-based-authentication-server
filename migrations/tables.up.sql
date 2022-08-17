@@ -20,10 +20,10 @@ CREATE TABLE temporary_passwords(
   --           token (create new token for the user),
   --           password (change password),
   --           login (change login)
-  purposes_ TEXT NOT NULL,
+  purpose_ TEXT NOT NULL,
 
   -- all data which you need to do this purpose
-  data_ JSON
+  data_ JSON,
 
   password_ TEXT,
   salt_ varchar(32) NOT NULL
