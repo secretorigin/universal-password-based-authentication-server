@@ -10,20 +10,12 @@ import (
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type Login_change struct {
+type request_login_change struct {
 	Access    access_part `json:"access"`
 	New_login string      `json:"new_login"`
 }
 
-func (request Login_change) Init(r *http.Request) apierror.APIError {
-	if r.URL.Path != "/login/change" || r.Method != "PATCH" {
-		return apierror.NotFound
-	}
-
-	return nil
-}
-
-func (request Login_change) Validate() apierror.APIError {
+func (request *request_login_change) Validate() apierror.APIError {
 	if !(regexp.MustCompile(settings.TokenRegex).MatchString(request.Access.Refresh_token) &&
 		regexp.MustCompile(settings.PasswordRegex).MatchString(request.Access.Password) &&
 		regexp.MustCompile(settings.LoginRegex).MatchString(request.New_login)) {
@@ -37,17 +29,35 @@ func (request Login_change) Validate() apierror.APIError {
 	return nil
 }
 
-func (request Login_change) Do(w http.ResponseWriter) apierror.APIError {
-	var user database.User
-	var token database.Token
-	err := CheckAccessPart(request.Access, &token, &user)
-	if err != nil {
-		return apierror.AuthenticationInfo
+func Login_change(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/login/change" || r.Method != "PATCH" {
+		ErrorHandler(w, apierror.NotFound)
+		return
 	}
 
-	purpose := login_change_purpose{User_id: user.Cache.Id, New_login: request.New_login}
-	process2FAVariablePurpose(w, purpose, request.New_login, settings.UserCreate2FA)
-	return nil
+	var body request_login_change
+	apierr := parseRequestBody(r, &body)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+
+	// process
+
+	var user database.User
+	apierr = body.Access.Check(&user)
+	if apierr != nil {
+		ErrorHandler(w, apierror.Access)
+		return
+	}
+
+	purpose := login_change_purpose{User_id: user.Uint64, New_login: body.New_login}
+	apierr = process2FAVariablePurpose(w, purpose, body.New_login, settings.UserCreate2FA)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+	return
 }
 
 type login_change_purpose struct {
@@ -56,10 +66,10 @@ type login_change_purpose struct {
 }
 
 func (p login_change_purpose) Do(w http.ResponseWriter) apierror.APIError {
-	user := database.User{Cache: database.UserCache{Id: p.User_id}}
-	err := user.ChangeLogin(p.New_login)
+	login := database.Login{String: p.New_login}
+	err := login.Change(p.User_id)
 	if err != nil {
-		return apierror.InternalServerError
+		return apierror.New(err, "Can't change login", "Internal Server Error", 500)
 	}
 
 	SetResponse(w, nil, http.StatusOK)

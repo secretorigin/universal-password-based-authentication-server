@@ -5,24 +5,15 @@ import (
 	"regexp"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/apierror"
-	"github.com/p2034/universal-password-based-authentication-server/internal/crypto"
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type Token_check struct {
+type request_token_check struct {
 	Token string `json:"token"`
 }
 
-func (request Token_check) Init(r *http.Request) apierror.APIError {
-	if r.URL.Path != "/token/check" || r.Method != "POST" {
-		return apierror.NotFound
-	}
-
-	return nil
-}
-
-func (request Token_check) Validate() apierror.APIError {
+func (request *request_token_check) Validate() apierror.APIError {
 	if !regexp.MustCompile(settings.TokenRegex).MatchString(request.Token) {
 		return apierror.FieldFormat
 	}
@@ -30,22 +21,32 @@ func (request Token_check) Validate() apierror.APIError {
 	return nil
 }
 
-func (request Token_check) Do(w http.ResponseWriter) apierror.APIError {
-	token_body, err := crypto.ParseToken(request.Token)
-	if err != nil {
-		return apierror.AuthenticationInfo
+func Token_check(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/token/check" || r.Method != "POST" {
+		ErrorHandler(w, apierror.NotFound)
+		return
 	}
 
-	token := database.Token{Cache: database.TokenCache{Id: token_body.Token_id}}
-	ok, _, err := token.Check(request.Token, "")
+	var body request_token_check
+	apierr := parseRequestBody(r, &body)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+
+	// process
+
+	token := database.Token{String: body.Token}
+	var user database.User
+	ok, err := token.Check("token", &user.Uint64)
 	if err != nil {
-		return apierror.InternalServerError
+		ErrorHandler(w, apierror.CheckToken)
+		return
 	}
 	if !ok {
-		return apierror.AuthenticationInfo
+		ErrorHandler(w, apierror.WrongToken)
+		return
 	}
 
 	SetResponse(w, nil, http.StatusOK)
-
-	return nil
 }

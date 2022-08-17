@@ -14,19 +14,17 @@ CREATE TABLE tokens(
 
 CREATE TABLE temporary_passwords(
   temporary_password_id_ BIGSERIAL PRIMARY KEY,
-  purpose_id_ BIGINT NOT NULL,
-  password_ TEXT,
-  salt_ varchar(32) NOT NULL
-);
 
-CREATE TABLE purposes(
-  purpose_id_ BIGSERIAL PRIMARY KEY,
   -- purposes: create (create user), 
   --           delete (delete user),
   --           token (create new token for the user),
   --           password (change password),
   --           login (change login)
   purposes_ TEXT NOT NULL,
+
   -- all data which you need to do this purpose
   data_ JSON
+
+  password_ TEXT,
+  salt_ varchar(32) NOT NULL
 );

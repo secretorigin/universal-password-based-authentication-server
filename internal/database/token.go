@@ -9,156 +9,179 @@ import (
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
+const (
+	TOKEN_TYPE         = "token"
+	REFRESH_TOKEN_TYPE = "refresh"
+)
+
 type Token struct {
-	Cache TokenCache
+	String string
+	Uint64 uint64
 }
 
-/*
-Get token from database and check it, first bool is
-
-Requirements:
-	1) Token id
-*/
-func (token *Token) Check(token_str string, refresh_token_str string) (bool, bool, error) {
-	// get data from db
-	user_id := token.Cache.User_id
-	err := token.Cache.Select()
-	if err != nil {
-		return false, false, err
-	}
-	if token.Cache.User_id != user_id {
-		return false, false, errors.New("wrong user id")
-	}
-
-	return crypto.CheckToken(token_str, token.Cache.Salt),
-		crypto.CheckToken(token_str, token.Cache.Refresh_salt), nil
-}
-
-/*
-Requirements:
-	1) User id
-*/
-func (token *Token) New() (TokenPair, error) {
-	tokens := TokenPair{"", ""}
-
-	// gen token params
-	token.Cache.Gen()
-
-	// save params in db
-	err := token.Cache.Insert()
-	if err != nil {
-		return tokens, err
-	}
-
-	// gen new pair
-	tokens.Gen(token.Cache)
-	return tokens, nil
-}
-
-/*
-Requirements:
-	1) Token id
-*/
-// token must be checked
-func (token *Token) UpdateToken() (TokenPair, error) {
-	tokens := TokenPair{"", ""}
-
-	// gen new token params
-	token.Cache.Gen()
-
-	// update in db
-	err := token.Cache.Update()
-	if err != nil {
-		return TokenPair{"", ""}, err
-	}
-
-	// gen new token pair
-	tokens.Gen(token.Cache)
-	return tokens, nil
-}
-
-// just a pair of refresh token and token
-
-type TokenPair struct {
-	Token        string `json:"token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
-func (tokens *TokenPair) Gen(cache TokenCache) (err error) {
-	tokens.Token, err = crypto.GenToken(
-		crypto.TokenBody{
-			Token_id:      cache.Id,
-			User_id:       cache.User_id,
-			Creation_date: time.Now().UTC().UnixNano()},
-		cache.Salt)
-	if err != nil {
-		return err
-	}
-	tokens.RefreshToken, err = crypto.GenToken(
-		crypto.TokenBody{
-			Token_id:      cache.Id,
-			User_id:       cache.User_id,
-			Creation_date: time.Now().UTC().UnixNano()},
-		cache.Refresh_salt)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// how token is implmented in database
-type TokenCache struct {
+type tokenCache struct {
 	Id           uint64
 	User_id      uint64
 	Salt         []byte
 	Refresh_salt []byte
 }
 
-func (cache *TokenCache) Gen() {
-	cache.Salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
-	cache.Refresh_salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
+/*
+	token type must be: "token"/"refresh"
+*/
+func (token Token) Check(token_type string, user_id *uint64) (bool, error) {
+	var body crypto.TokenBody
+	err := body.Parse(token.String)
+	if err != nil {
+		return false, err
+	}
+	*user_id = body.User_id
+	if body.Type != token_type {
+		return false, errors.New("wrong token type")
+	}
+	token.Uint64 = body.Id
+
+	var salt string
+	if body.Type == "token" {
+		err = GetDB().QueryRow("SELECT salt_ FROM tokens WHERE token_id_=$1;",
+			token.Uint64).Scan(&salt)
+	} else if body.Type == "refresh" {
+		err = GetDB().QueryRow("SELECT refresh_salt_ FROM tokens WHERE token_id_=$1;",
+			token.Uint64).Scan(&salt)
+	} else {
+		return false, errors.New("wrong type")
+	}
+	if err != nil {
+		return false, err
+	}
+
+	salt_bytes, err := hex.DecodeString(salt)
+	if err != nil {
+		return false, err
+	}
+
+	return body.Check(token.String, salt_bytes)
 }
 
-// some database core logic functions
+/*
+	return refresh token
+*/
+func (token *Token) New(user_id uint64) (Token, error) {
+	var refresh_token Token // will be returned
+	// gen salts
+	var salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
+	var refresh_salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
 
-// token id must be setted
-func (cache *TokenCache) Select() error {
-	var salt string
-	var refresh_salt string
-	err := GetDB().QueryRow("SELECT user_id_, salt_, refresh_salt_ FROM tokens WHERE token_id_=$1;",
-		cache.Id).Scan(&cache.User_id, &salt, &refresh_salt)
+	// insert in database
+	err := GetDB().QueryRow("INSERT INTO tokens (user_id_, salt_, refresh_salt_) VALUES ($1, $2, $3) RETURNING token_id_;",
+		user_id, hex.EncodeToString(salt), hex.EncodeToString(refresh_salt)).Scan(&token.Uint64)
+	refresh_token.Uint64 = token.Uint64
 	if err != nil {
-		return err
+		return Token{String: ""}, err
 	}
 
-	// decode salts
-	cache.Salt, err = hex.DecodeString(salt)
-	if err != nil {
-		return err
+	// gen token
+	token_body := crypto.TokenBody{
+		Type:          TOKEN_TYPE,
+		Id:            token.Uint64,
+		User_id:       user_id,
+		Creation_date: time.Now().UnixMicro(),
 	}
-	cache.Salt, err = hex.DecodeString(refresh_salt)
+	token.String, err = token_body.Gen(salt)
+	if err != nil {
+		return Token{String: ""}, err
+	}
+	// gen refresh token
+	refresh_token_body := crypto.TokenBody{
+		Type:          REFRESH_TOKEN_TYPE,
+		Id:            refresh_token.Uint64,
+		User_id:       user_id,
+		Creation_date: time.Now().UnixMicro(),
+	}
+	refresh_token.String, err = refresh_token_body.Gen(refresh_salt)
+	if err != nil {
+		return Token{String: ""}, err
+	}
+
+	return refresh_token, nil
+}
+
+/*
+	update passed by reference token
+	get new salt and refresh_salt
+	return refresh token
+*/
+func (token *Token) Update(user_id *uint64) (Token, error) {
+	var refresh_token Token // will be returned
+
+	// if token is not parsed
+	if token.Uint64 == 0 {
+		var body crypto.TokenBody
+		err := body.Parse(token.String)
+		if err != nil {
+			return Token{String: ""}, err
+		}
+		if body.Type != REFRESH_TOKEN_TYPE {
+			return Token{String: ""}, errors.New("wrong token type")
+		}
+		token.Uint64 = body.Id
+		refresh_token.Uint64 = body.Id
+		*user_id = body.User_id
+	}
+
+	var salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
+	var refresh_salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
+
+	// insert in database
+	_, err := GetDB().Query("UPDATE tokens SET salt_=$1, refresh_salt_=$2 WHERE token_id=$3;",
+		hex.EncodeToString(salt), hex.EncodeToString(refresh_salt), token.Uint64)
+	if err != nil {
+		return Token{String: ""}, err
+	}
+
+	// gen token
+	token_body := crypto.TokenBody{
+		Type:          TOKEN_TYPE,
+		Id:            token.Uint64,
+		User_id:       *user_id,
+		Creation_date: time.Now().UnixMicro(),
+	}
+	token.String, err = token_body.Gen(salt)
+	if err != nil {
+		return Token{String: ""}, err
+	}
+	// gen refresh token
+	refresh_token_body := crypto.TokenBody{
+		Type:          REFRESH_TOKEN_TYPE,
+		Id:            refresh_token.Uint64,
+		User_id:       *user_id,
+		Creation_date: time.Now().UnixMicro(),
+	}
+	refresh_token.String, err = refresh_token_body.Gen(refresh_salt)
+	if err != nil {
+		return Token{String: ""}, err
+	}
+
+	return refresh_token, nil
+}
+
+func (token Token) Delete(refresh_token_str string) error {
+	if token.Uint64 == 0 {
+		var body crypto.TokenBody
+		err := body.Parse(refresh_token_str)
+		if err != nil {
+			return err
+		}
+		if body.Type != REFRESH_TOKEN_TYPE {
+			return errors.New("wrong token type")
+		}
+		token.Uint64 = body.Id
+	}
+
+	_, err := GetDB().Query("DELETE FROM tokens WHERE token_id=$1;", token.Uint64)
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func (cache *TokenCache) Insert() error {
-	err := GetDB().QueryRow("INSERT INTO tokens (user_id_, salt_, refresh_salt_) VALUES ($1, $2, $3) RETURNING token_id_;",
-		cache.User_id, hex.EncodeToString(cache.Salt), hex.EncodeToString(cache.Refresh_salt)).Scan(&cache.Id)
-	return err
-}
-
-func (cache *TokenCache) Update() error {
-	_, err := GetDB().Query("UPDATE tokens SET salt_=$1, refresh_salt_=$2 WHERE token_id_=$3;",
-		hex.EncodeToString(cache.Salt), hex.EncodeToString(cache.Refresh_salt), cache.Id)
-	return err
-}
-
-// id must be in token cache
-func (cache *TokenCache) Delete() error {
-	_, err := GetDB().Query("DELETE FROM tokens WHERE token_id_==$1;", cache.Id)
-	return err
 }

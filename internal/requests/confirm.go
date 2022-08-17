@@ -6,28 +6,17 @@ import (
 	"regexp"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/apierror"
-	"github.com/p2034/universal-password-based-authentication-server/internal/crypto"
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type Confirm struct {
+type request_confirm struct {
 	Temporary_token    string `json:"temporary_token"`
 	Temporary_password string `json:"temporary_password"`
 	Method             string `json:"-"`
 }
 
-func (request Confirm) Init(r *http.Request) apierror.APIError {
-	request.Method = r.Method
-
-	if r.URL.Path != "/confirm" || (r.Method != "POST" && r.Method != "PATCH") {
-		return apierror.NotFound
-	}
-
-	return nil
-}
-
-func (request Confirm) Validate() apierror.APIError {
+func (request *request_confirm) Validate() apierror.APIError {
 	switch request.Method {
 	case "POST":
 		if !(regexp.MustCompile(settings.TokenRegex).MatchString(request.Temporary_token) &&
@@ -43,33 +32,40 @@ func (request Confirm) Validate() apierror.APIError {
 	return nil
 }
 
-func (request Confirm) Do(w http.ResponseWriter) apierror.APIError {
-	switch request.Method {
+func Confirm(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/confirm" || (r.Method != "POST" && r.Method != "PATCH") {
+		ErrorHandler(w, apierror.NotFound)
+		return
+	}
+
+	var body request_confirm
+	body.Method = r.Method
+	apierr := parseRequestBody(r, &body)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+
+	// process
+
+	switch r.Method {
 	case "POST":
-		token_body, err := crypto.ParseTemporaryToken(request.Temporary_token)
+		var login database.Login
+		temporary := database.TemporaryToken{String: body.Temporary_token}
+		ok, err := temporary.Check(body.Temporary_password, &login)
 		if err != nil {
-			return apierror.AuthenticationInfo
+			ErrorHandler(w, apierror.New(err, "can not check temporary password", "Bad Request", 400))
+			return
 		}
-		tpass := database.TemporaryPassword{
-			Cache: database.TemporaryPasswordCache{
-				Id: token_body.Temporary_token_id}}
-		tokenok, passwordok, err := tpass.Check(request.Temporary_token, request.Temporary_password)
-		if err != nil {
-			return apierror.AuthenticationInfo
-		}
-		if !tokenok || !passwordok {
-			return apierror.AuthenticationInfo
+		if !ok {
+			ErrorHandler(w, apierror.WrongTempPassword)
+			return
 		}
 
-		// get data and create response with purpose
-		pcache := database.PurposeCache{Id: tpass.Cache.Purpose_id}
-		err = pcache.Select()
-		if err != nil {
-			return apierror.InternalServerError
-		}
+		purpose, err := temporary.GetPurpose()
 
 		var p Purpose
-		switch pcache.Purpose {
+		switch purpose.Name {
 		case "create":
 			p = user_create_purpose{}
 		case "delete":
@@ -81,46 +77,44 @@ func (request Confirm) Do(w http.ResponseWriter) apierror.APIError {
 		case "login":
 			p = login_change_purpose{}
 		default:
-			return apierror.InternalServerError
+			ErrorHandler(w, apierror.New(err, "Undefined purpose", "Internal Server Error", 500))
+			return
 		}
-		err = json.Unmarshal(pcache.Data, &p)
+		err = json.Unmarshal([]byte(purpose.Data), &p)
 		if err != nil {
-			return apierror.InternalServerError
+			ErrorHandler(w, apierror.New(err, "can not unmarshal purpose body", "Internal Server Error", 500))
+			return
 		}
 		p.Do(w)
 
 		// delete old part time password
-		_, err = database.GetDB().Query("DELETE FROM temporary_passwords WHERE temporary_password_id_=$1;",
-			token_body.Temporary_token_id)
+		err = temporary.Delete()
 		if err != nil {
-			return apierror.InternalServerError
+			ErrorHandler(w, apierror.New(err, "Can't delete temporary password", "Internal Server Error", 500))
+			return
 		}
-		return nil
 	case "PATCH":
-		token_body, err := crypto.ParseTemporaryToken(request.Temporary_token)
+		var login database.Login
+		temporary := database.TemporaryToken{String: body.Temporary_token}
+		ok, err := temporary.Check(body.Temporary_password, &login)
 		if err != nil {
-			return apierror.AuthenticationInfo
+			ErrorHandler(w, apierror.New(err, "can not check temporary password", "Bad Request", 400))
+			return
 		}
-		tpass := database.TemporaryPassword{
-			Cache: database.TemporaryPasswordCache{
-				Id: token_body.Temporary_token_id}}
-		tokenok, passwordok, err := tpass.Check(request.Temporary_token, "")
-		if err != nil {
-			return apierror.AuthenticationInfo
-		}
-		if !tokenok || !passwordok {
-			return apierror.AuthenticationInfo
+		if !ok {
+			ErrorHandler(w, apierror.WrongTempToken)
+			return
 		}
 
-		token, err := tpass.Update(token_body.Login)
+		err = temporary.Update(login)
 		if err != nil {
-			return apierror.InternalServerError
+			ErrorHandler(w, apierror.New(err, "Can't update temporary password", "Internal Server Error", 500))
+			return
 		}
-		res := response_confirm_patch{Temporary_token: token}
+		res := response_confirm_patch{Temporary_token: temporary.String}
 		SetResponse(w, res, http.StatusOK)
-		return nil
 	default:
-		return apierror.InternalServerError
+		ErrorHandler(w, apierror.NotFound)
 	}
 }
 

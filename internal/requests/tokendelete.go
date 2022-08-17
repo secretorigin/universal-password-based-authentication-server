@@ -5,24 +5,15 @@ import (
 	"regexp"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/apierror"
-	"github.com/p2034/universal-password-based-authentication-server/internal/crypto"
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type Token_delete struct {
+type request_token_delete struct {
 	Refresh_token string `json:"refresh_token"`
 }
 
-func (request Token_delete) Init(r *http.Request) apierror.APIError {
-	if r.URL.Path != "/token/delete" || r.Method != "POST" {
-		return apierror.NotFound
-	}
-
-	return nil
-}
-
-func (request Token_delete) Validate() apierror.APIError {
+func (request *request_token_delete) Validate() apierror.APIError {
 	if !regexp.MustCompile(settings.TokenRegex).MatchString(request.Refresh_token) {
 		return apierror.FieldFormat
 	}
@@ -30,27 +21,38 @@ func (request Token_delete) Validate() apierror.APIError {
 	return nil
 }
 
-func (request Token_delete) Do(w http.ResponseWriter) apierror.APIError {
-	token_body, err := crypto.ParseToken(request.Refresh_token)
-	if err != nil {
-		return apierror.AuthenticationInfo
+func Token_delete(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/token/delete" || r.Method != "POST" {
+		ErrorHandler(w, apierror.NotFound)
+		return
 	}
 
-	token := database.Token{Cache: database.TokenCache{Id: token_body.Token_id}}
-	_, ok, err := token.Check("", request.Refresh_token)
+	var body request_token_delete
+	apierr := parseRequestBody(r, &body)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+
+	// process
+
+	token := database.Token{String: body.Refresh_token}
+	var user database.User
+	ok, err := token.Check("refresh", &user.Uint64)
 	if err != nil {
-		return apierror.InternalServerError
+		ErrorHandler(w, apierror.CheckToken)
+		return
 	}
 	if !ok {
-		return apierror.AuthenticationInfo
+		ErrorHandler(w, apierror.WrongToken)
+		return
 	}
 
-	err = token.Cache.Delete()
+	err = token.Delete(body.Refresh_token)
 	if err != nil {
-		return apierror.InternalServerError
+		ErrorHandler(w, apierror.New(err, "Can't delete token", "Internal Server Error", 500))
+		return
 	}
 
 	SetResponse(w, nil, http.StatusOK)
-
-	return nil
 }

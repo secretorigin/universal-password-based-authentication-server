@@ -10,20 +10,12 @@ import (
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type User_create struct {
+type request_user_create struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
 
-func (request User_create) Init(r *http.Request) apierror.APIError {
-	if r.URL.Path != "/user/create" || r.Method != "POST" {
-		return nil
-	}
-
-	return nil
-}
-
-func (request User_create) Validate() apierror.APIError {
+func (request *request_user_create) Validate() apierror.APIError {
 	if !(regexp.MustCompile(settings.LoginRegex).MatchString(request.Login) &&
 		regexp.MustCompile(settings.PasswordRegex).MatchString(request.Password)) {
 		return apierror.FieldFormat
@@ -36,9 +28,29 @@ func (request User_create) Validate() apierror.APIError {
 	return nil
 }
 
-func (request User_create) Do(w http.ResponseWriter) apierror.APIError {
-	purpose := user_create_purpose{Login: request.Login, Password: request.Password}
-	return process2FAVariablePurpose(w, purpose, request.Login, settings.UserCreate2FA)
+func User_create(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/user/create" || r.Method != "POST" {
+		ErrorHandler(w, apierror.NotFound)
+		return
+	}
+
+	var body request_user_create
+	apierr := parseRequestBody(r, &body)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+
+	// process
+
+	purpose := user_create_purpose{Login: body.Login, Password: body.Password}
+	apierr = process2FAVariablePurpose(w, purpose, body.Login, settings.UserCreate2FA)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+
+	SetResponse(w, nil, http.StatusOK)
 }
 
 // purpose when 2FA is activated
@@ -49,12 +61,10 @@ type user_create_purpose struct {
 }
 
 func (p user_create_purpose) Do(w http.ResponseWriter) apierror.APIError {
-	user := database.User{
-		Cache: database.UserCache{
-			Login: p.Login}}
-	err := user.New(p.Password)
+	user := database.User{String: p.Login}
+	err := user.New(database.Password{String: p.Password})
 	if err != nil {
-		return apierror.InternalServerError
+		return apierror.New(err, "user creation", "Internal Server Error", 500)
 	}
 
 	SetResponse(w, nil, http.StatusOK)

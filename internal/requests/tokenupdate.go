@@ -5,24 +5,15 @@ import (
 	"regexp"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/apierror"
-	"github.com/p2034/universal-password-based-authentication-server/internal/crypto"
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type Token_update struct {
+type request_token_update struct {
 	Refresh_token string `json:"refresh_token"`
 }
 
-func (request Token_update) Init(r *http.Request) apierror.APIError {
-	if r.URL.Path != "/token/update" || r.Method != "PATCH" {
-		return apierror.NotFound
-	}
-
-	return nil
-}
-
-func (request Token_update) Validate() apierror.APIError {
+func (request *request_token_update) Validate() apierror.APIError {
 	if !regexp.MustCompile(settings.TokenRegex).MatchString(request.Refresh_token) {
 		return apierror.FieldFormat
 	}
@@ -30,28 +21,41 @@ func (request Token_update) Validate() apierror.APIError {
 	return nil
 }
 
-func (request Token_update) Do(w http.ResponseWriter) apierror.APIError {
-	token_body, err := crypto.ParseToken(request.Refresh_token)
-	if err != nil {
-		return apierror.AuthenticationInfo
+func Token_update(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/token/update" || r.Method != "PATCH" {
+		ErrorHandler(w, apierror.NotFound)
+		return
 	}
 
-	// check refresh token
-	token := database.Token{Cache: database.TokenCache{Id: token_body.Token_id}}
-	_, ok, err := token.Check("", request.Refresh_token)
+	var body request_token_update
+	apierr := parseRequestBody(r, &body)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+
+	// process
+
+	token := database.Token{String: body.Refresh_token}
+	var user database.User
+	ok, err := token.Check("refresh", &user.Uint64)
 	if err != nil {
-		return apierror.AuthenticationInfo
+		ErrorHandler(w, apierror.CheckToken)
+		return
 	}
 	if !ok {
-		return apierror.AuthenticationInfo
+		ErrorHandler(w, apierror.WrongToken)
+		return
 	}
 
-	// update tokens
-	tokens, err := token.UpdateToken()
+	refresh_token, err := token.Update(&user.Uint64)
 	if err != nil {
-		return apierror.InternalServerError
+		ErrorHandler(w, apierror.New(err, "Can't update token", "Internal Server Error", 500))
+		return
 	}
 
-	SetResponse(w, tokens, 200)
-	return nil
+	SetResponse(w, response_token_get{
+		Token:         token.String,
+		Refresh_token: refresh_token.String,
+	}, http.StatusOK)
 }

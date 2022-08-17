@@ -29,17 +29,17 @@ func Start() {
 
 func startServer(conf settings.ServerConf) {
 	// handlers
-	http.HandleFunc("/user/create", requests.Handler[requests.User_create]())
-	http.HandleFunc("/user/delete", requests.Handler[requests.User_delete]())
-	http.HandleFunc("/password/change", requests.Handler[requests.Password_change]())
-	http.HandleFunc("/login/change", requests.Handler[requests.Login_change]())
+	http.HandleFunc("/user/create", requests.Handler(requests.User_create))
+	http.HandleFunc("/user/delete", requests.Handler(requests.User_delete))
+	http.HandleFunc("/password/change", requests.Handler(requests.Password_change))
+	http.HandleFunc("/login/change", requests.Handler(requests.Login_change))
 
-	http.HandleFunc("/token/get", requests.Handler[requests.Token_get]())
-	http.HandleFunc("/token/delete", requests.Handler[requests.Token_delete]())
-	http.HandleFunc("/token/check", requests.Handler[requests.Token_check]())
-	http.HandleFunc("/token/update", requests.Handler[requests.Token_update]())
+	http.HandleFunc("/token/get", requests.Handler(requests.Token_get))
+	http.HandleFunc("/token/delete", requests.Handler(requests.Token_delete))
+	http.HandleFunc("/token/check", requests.Handler(requests.Token_check))
+	http.HandleFunc("/token/update", requests.Handler(requests.Token_update))
 
-	http.HandleFunc("/confirm", requests.Handler[requests.Confirm]())
+	http.HandleFunc("/confirm", requests.Handler(requests.Confirm))
 
 	// start server
 	host := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
@@ -59,7 +59,7 @@ func setVariables() {
 	}
 	settings.TemporaryPasswordRegex = ""
 
-	// settings.UserCreate2FA = true
+	settings.UserCreate2FA = true
 	settings.PasswordChange2FA = true
 	settings.LoginChange2FA = true
 	settings.UserDelete2FA = true

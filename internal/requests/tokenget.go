@@ -10,20 +10,12 @@ import (
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type Token_get struct {
+type request_token_get struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
 
-func (request Token_get) Init(r *http.Request) apierror.APIError {
-	if r.URL.Path != "/token/get" || r.Method != "POST" {
-		return apierror.NotFound
-	}
-
-	return nil
-}
-
-func (request Token_get) Validate() apierror.APIError {
+func (request *request_token_get) Validate() apierror.APIError {
 	if !(regexp.MustCompile(settings.LoginRegex).MatchString(request.Login) &&
 		regexp.MustCompile(settings.PasswordRegex).MatchString(request.Password)) {
 		return apierror.FieldFormat
@@ -32,18 +24,45 @@ func (request Token_get) Validate() apierror.APIError {
 	return nil
 }
 
-func (request Token_get) Do(w http.ResponseWriter) apierror.APIError {
-	user := database.User{Cache: database.UserCache{Login: request.Login}}
-	ok, err := user.Check(request.Password)
-	if err != nil {
-		return apierror.InternalServerError
-	}
-	if !ok {
-		return apierror.Password
+func Token_get(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/token/get" || r.Method != "POST" {
+		ErrorHandler(w, apierror.NotFound)
+		return
 	}
 
-	purpose := token_get_purpose{User_id: user.Cache.Id}
-	return process2FAVariablePurpose(w, purpose, request.Login, settings.TokenGet2FA)
+	var body request_token_get
+	apierr := parseRequestBody(r, &body)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+
+	// process
+
+	user := database.User{String: body.Login}
+	err := user.GetId()
+	if err != nil {
+		ErrorHandler(w, apierror.New(err, "can not find user by login", "Bad Request", 400))
+		return
+	}
+	password := database.Password{String: body.Password}
+	ok, err := password.Check(user)
+	if err != nil {
+		ErrorHandler(w, apierror.CheckPassword)
+		return
+	}
+	if !ok {
+		ErrorHandler(w, apierror.WrongPassword)
+		return
+	}
+
+	purpose := token_get_purpose{User_id: user.Uint64}
+	apierr = process2FAVariablePurpose(w, purpose, body.Login, settings.TokenGet2FA)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+	return
 }
 
 type token_get_purpose struct {
@@ -51,13 +70,16 @@ type token_get_purpose struct {
 }
 
 func (p token_get_purpose) Do(w http.ResponseWriter) apierror.APIError {
-	token := database.Token{Cache: database.TokenCache{User_id: p.User_id}}
-	tokens, err := token.New()
+	token := database.Token{}
+	refresh_token, err := token.New(p.User_id)
 	if err != nil {
-		return apierror.InternalServerError
+		return apierror.New(err, "Can't create token", "Internal Server Error", 500)
 	}
 
-	SetResponse(w, tokens, http.StatusOK)
+	SetResponse(w, response_token_get{
+		Token:         token.String,
+		Refresh_token: refresh_token.String,
+	}, http.StatusOK)
 	return nil
 }
 
@@ -68,4 +90,9 @@ func (p token_get_purpose) Name() string {
 func (p token_get_purpose) Encode() []byte {
 	body, _ := json.Marshal(p)
 	return body
+}
+
+type response_token_get struct {
+	Token         string `json:"token"`
+	Refresh_token string `json:"refresh_token"`
 }

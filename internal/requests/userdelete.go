@@ -1,7 +1,6 @@
 package requests
 
 import (
-	"encoding/json"
 	"net/http"
 	"regexp"
 
@@ -10,37 +9,55 @@ import (
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
-type User_delete struct {
+// user delete body
+type request_user_delete struct {
 	Access access_part `json:"access"`
 }
 
-func (request User_delete) Init(r *http.Request) apierror.APIError {
-	if r.URL.Path != "/user/delete" || r.Method != "POST" {
-		return apierror.NotFound
-	}
-
-	return nil
-}
-
-func (request User_delete) Validate() apierror.APIError {
-	if !(regexp.MustCompile(settings.TokenRegex).MatchString(request.Access.Refresh_token) &&
-		regexp.MustCompile(settings.PasswordRegex).MatchString(request.Access.Password)) {
+func (body *request_user_delete) Validate() apierror.APIError {
+	if !(regexp.MustCompile(settings.TokenRegex).MatchString(body.Access.Refresh_token) &&
+		regexp.MustCompile(settings.PasswordRegex).MatchString(body.Access.Password)) {
 		return apierror.FieldFormat
 	}
 
 	return nil
 }
 
-func (request User_delete) Do(w http.ResponseWriter) apierror.APIError {
-	var user database.User
-	var token database.Token
-	err := CheckAccessPart(request.Access, &token, &user)
-	if err != nil {
-		return apierror.AuthenticationInfo
+func User_delete(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/user/delete" || r.Method != "POST" {
+		ErrorHandler(w, apierror.NotFound)
+		return
 	}
 
-	purpose := user_delete_purpose{User_id: user.Cache.Id}
-	return process2FAVariablePurpose(w, purpose, user.Cache.Login, settings.UserDelete2FA)
+	var body request_user_delete
+	apierr := parseRequestBody(r, &body)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+
+	// process
+
+	var user database.User
+	apierr = body.Access.Check(&user)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+
+	purpose := user_delete_purpose{User_id: user.Uint64}
+	err := user.GetLogin()
+	if err != nil {
+		ErrorHandler(w, apierror.New(err, "Can get user's login", "Internal Server Error", 500))
+		return
+	}
+	apierr = process2FAVariablePurpose(w, purpose, user.String, settings.UserDelete2FA)
+	if apierr != nil {
+		ErrorHandler(w, apierr)
+		return
+	}
+
+	SetResponse(w, nil, http.StatusOK)
 }
 
 // purpose when 2FA is activated
@@ -50,10 +67,10 @@ type user_delete_purpose struct {
 }
 
 func (p user_delete_purpose) Do(w http.ResponseWriter) apierror.APIError {
-	cache := database.UserCache{Id: p.User_id}
-	err := cache.Delete()
+	user := database.User{Uint64: p.User_id}
+	err := user.Delete()
 	if err != nil {
-		return apierror.Database
+		return apierror.New(err, "Can not delete user", "Internal Server Error", 500)
 	}
 	SetResponse(w, nil, http.StatusOK)
 	return nil
@@ -61,9 +78,4 @@ func (p user_delete_purpose) Do(w http.ResponseWriter) apierror.APIError {
 
 func (p user_delete_purpose) Name() string {
 	return "delete"
-}
-
-func (p user_delete_purpose) Encode() []byte {
-	body, _ := json.Marshal(p)
-	return body
 }

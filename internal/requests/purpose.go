@@ -10,25 +10,23 @@ import (
 type Purpose interface {
 	Do(w http.ResponseWriter) apierror.APIError
 	Name() string
-	Encode() []byte
 }
 
 func process2FAVariablePurpose(w http.ResponseWriter, purpose Purpose, login string, twofa bool) apierror.APIError {
 	if twofa {
-		temporary := database.TemporaryPassword{
-			Cache: database.TemporaryPasswordCache{},
-			Purpose: database.PurposeCache{
-				Purpose: purpose.Name(),
-				Data:    purpose.Encode()}}
-
-		token, err := temporary.New(login)
+		temporary := database.TemporaryToken{}
+		err := temporary.New(login, purpose.Name(), purpose)
 		if err != nil {
-			return apierror.InternalServerError
+			return apierror.New(err, "Can't create temporary password", "Internal Server Error", 500)
 		}
 
-		SetResponse(w, response_temporary_token_body{Temporary_token: token}, 200)
+		SetResponse(w, response_temporary_token{Temporary_token: temporary.String}, 200)
 		return nil
 	} else {
 		return purpose.Do(w)
 	}
+}
+
+type response_temporary_token struct {
+	Temporary_token string `json:"temporary_token"`
 }

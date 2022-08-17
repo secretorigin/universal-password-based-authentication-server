@@ -2,9 +2,11 @@ package requests
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/apierror"
+	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
 
 func SetResponse(w http.ResponseWriter, res interface{}, status int) {
@@ -13,9 +15,24 @@ func SetResponse(w http.ResponseWriter, res interface{}, status int) {
 		w.Header().Set("Content-Type", "application/json")
 		rawbody, err := json.Marshal(res)
 		if err != nil {
-			ErrorHandler(w, apierror.InternalServerError)
+			ErrorHandler(w, apierror.New(err, "Can't marshal response", "Internal Server Error", 500))
 			return
 		}
 		w.Write(rawbody)
 	}
+}
+
+func ErrorHandler(w http.ResponseWriter, err apierror.APIError) {
+	// loging error
+	if settings.DebugMode {
+		if err != nil {
+			log.Print("Error: ", err.Error(), ", ")
+		}
+		log.Println("Msg to the user:", err.Debug(), err.Status())
+	}
+	SetResponse(w, ErrorBody{Error: err.Msg()}, err.Status())
+}
+
+type ErrorBody struct {
+	Error string `json:"error"`
 }
