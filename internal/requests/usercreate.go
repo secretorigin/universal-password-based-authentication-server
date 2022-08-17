@@ -44,13 +44,7 @@ func User_create(w http.ResponseWriter, r *http.Request) {
 	// process
 
 	purpose := user_create_purpose{Login: body.Login, Password: body.Password}
-	res, apierr := process2FAVariablePurpose(w, purpose, body.Login, settings.UserCreate2FA)
-	if apierr != nil {
-		ErrorHandler(w, apierr)
-		return
-	}
-
-	SetResponse(w, res, http.StatusOK)
+	process2FAVariablePurpose(w, purpose, body.Login, settings.UserCreate2FA)
 }
 
 // purpose when 2FA is activated

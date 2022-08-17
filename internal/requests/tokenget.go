@@ -56,14 +56,7 @@ func Token_get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	purpose := token_get_purpose{User_id: user.Uint64}
-	res, apierr := process2FAVariablePurpose(w, purpose, body.Login, settings.TokenGet2FA)
-	if apierr != nil {
-		ErrorHandler(w, apierr)
-		return
-	}
-
-	SetResponse(w, res, http.StatusOK)
-	return
+	process2FAVariablePurpose(w, purpose, body.Login, settings.TokenGet2FA)
 }
 
 type token_get_purpose struct {

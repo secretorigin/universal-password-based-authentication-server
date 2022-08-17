@@ -57,13 +57,7 @@ func Password_change(w http.ResponseWriter, r *http.Request) {
 		New_password:      body.New_password,
 		Logout_everywhere: body.Logout_everywhere,
 		Refresh_token:     body.Access.Refresh_token}
-	res, apierr := process2FAVariablePurpose(w, purpose, user.String, settings.PasswordChange2FA)
-	if apierr != nil {
-		ErrorHandler(w, apierr)
-		return
-	}
-
-	SetResponse(w, res, http.StatusOK)
+	process2FAVariablePurpose(w, purpose, user.String, settings.PasswordChange2FA)
 }
 
 type password_change_purpose struct {

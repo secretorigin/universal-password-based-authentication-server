@@ -51,13 +51,7 @@ func Login_change(w http.ResponseWriter, r *http.Request) {
 	}
 
 	purpose := login_change_purpose{User_id: user.Uint64, New_login: body.New_login}
-	res, apierr := process2FAVariablePurpose(w, purpose, body.New_login, settings.UserCreate2FA)
-	if apierr != nil {
-		ErrorHandler(w, apierr)
-		return
-	}
-
-	SetResponse(w, res, http.StatusOK)
+	process2FAVariablePurpose(w, purpose, body.New_login, settings.UserCreate2FA)
 }
 
 type login_change_purpose struct {

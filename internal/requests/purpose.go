@@ -12,17 +12,21 @@ type Purpose interface {
 	Name() string
 }
 
-func process2FAVariablePurpose(w http.ResponseWriter, purpose Purpose, login string, twofa bool) (response_temporary_token, apierror.APIError) {
+func process2FAVariablePurpose(w http.ResponseWriter, purpose Purpose, login string, twofa bool) {
 	if twofa {
 		temporary := database.TemporaryToken{}
 		err := temporary.New(login, purpose.Name(), purpose)
 		if err != nil {
-			return response_temporary_token{}, apierror.New(err, "Can't create temporary password", "Internal Server Error", 500)
+			ErrorHandler(w, apierror.New(err, "Can't create temporary password", "Internal Server Error", 500))
+			return
 		}
-
-		return response_temporary_token{Temporary_token: temporary.String}, nil
+		SetResponse(w, response_temporary_token{Temporary_token: temporary.String}, http.StatusOK)
 	} else {
-		return response_temporary_token{}, purpose.Do(w)
+		apierr := purpose.Do(w)
+		if apierr != nil {
+			ErrorHandler(w, apierr)
+			return
+		}
 	}
 }
 

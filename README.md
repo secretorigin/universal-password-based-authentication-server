@@ -60,3 +60,9 @@ Tables all tables you can see in the <b>./migrations</b> folder
 	- <b>settings.TokenGet2FA</b>
 
 Login is some information, which is used for delivering temporary passwords to the user, it can be email, or phone number, or other, it just must be written as a string. You can change regular expression for login, changing <b>settings.LoginRegex</b>.
+
+And you can start server (in project directory):
+
+```bash
+./bin/app
+```
