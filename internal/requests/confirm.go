@@ -11,20 +11,20 @@ import (
 )
 
 type request_confirm struct {
-	Temporary_token    string `json:"temporary_token"`
-	Temporary_password string `json:"temporary_password"`
+	Verification_token string `json:"verification_token"`
+	Verification_code  string `json:"verification_code"`
 	Method             string `json:"-"`
 }
 
 func (request *request_confirm) Validate() apierror.APIError {
 	switch request.Method {
 	case "POST":
-		if !(regexp.MustCompile(settings.Conf.Regex.Token).MatchString(request.Temporary_token) &&
-			regexp.MustCompile(settings.Conf.Regex.VerificationCode).MatchString(request.Temporary_password)) {
+		if !(regexp.MustCompile(settings.Conf.Regex.Token).MatchString(request.Verification_token) &&
+			regexp.MustCompile(settings.Conf.Regex.VerificationCode).MatchString(request.Verification_code)) {
 			return apierror.FieldFormat
 		}
 	case "PATCH":
-		if !regexp.MustCompile(settings.Conf.Regex.Token).MatchString(request.Temporary_token) {
+		if !regexp.MustCompile(settings.Conf.Regex.Token).MatchString(request.Verification_token) {
 			return apierror.FieldFormat
 		}
 	}
@@ -51,18 +51,18 @@ func Confirm(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
 		var login database.Login
-		temporary := database.TemporaryToken{String: body.Temporary_token}
-		ok, err := temporary.Check(body.Temporary_password, &login)
+		verification := database.VerificationToken{String: body.Verification_token}
+		ok, err := verification.Check(body.Verification_code, &login)
 		if err != nil {
-			ErrorHandler(w, apierror.New(err, "can not check temporary password", "Bad Request", 400))
+			ErrorHandler(w, apierror.New(err, "can not check verification code", "Bad Request", 400))
 			return
 		}
 		if !ok {
-			ErrorHandler(w, apierror.WrongTempPassword)
+			ErrorHandler(w, apierror.WrongVerificationCode)
 			return
 		}
 
-		purpose, err := temporary.GetPurpose()
+		purpose, err := verification.GetPurpose()
 
 		var p Purpose
 		switch purpose.Name {
@@ -88,30 +88,30 @@ func Confirm(w http.ResponseWriter, r *http.Request) {
 		p.Do(w)
 
 		// delete old part time password
-		err = temporary.Delete()
+		err = verification.Delete()
 		if err != nil {
-			ErrorHandler(w, apierror.New(err, "Can't delete temporary password", "Internal Server Error", 500))
+			ErrorHandler(w, apierror.New(err, "Can't delete verification code", "Internal Server Error", 500))
 			return
 		}
 	case "PATCH":
 		var login database.Login
-		temporary := database.TemporaryToken{String: body.Temporary_token}
-		ok, err := temporary.Check(body.Temporary_password, &login)
+		verification := database.VerificationToken{String: body.Verification_token}
+		ok, err := verification.Check(body.Verification_code, &login)
 		if err != nil {
-			ErrorHandler(w, apierror.New(err, "can not check temporary password", "Bad Request", 400))
+			ErrorHandler(w, apierror.New(err, "can not check verification code", "Bad Request", 400))
 			return
 		}
 		if !ok {
-			ErrorHandler(w, apierror.WrongTempToken)
+			ErrorHandler(w, apierror.WrongVerificationCode)
 			return
 		}
 
-		err = temporary.Update(login)
+		err = verification.Update(login)
 		if err != nil {
-			ErrorHandler(w, apierror.New(err, "Can't update temporary password", "Internal Server Error", 500))
+			ErrorHandler(w, apierror.New(err, "Can't update verification code", "Internal Server Error", 500))
 			return
 		}
-		res := response_confirm_patch{Temporary_token: temporary.String}
+		res := response_confirm_patch{Verification_token: verification.String}
 		SetResponse(w, res, http.StatusOK)
 	default:
 		ErrorHandler(w, apierror.NotFound)
@@ -119,5 +119,5 @@ func Confirm(w http.ResponseWriter, r *http.Request) {
 }
 
 type response_confirm_patch struct {
-	Temporary_token string `json:"temporary_token"`
+	Verification_token string `json:"verification_token"`
 }

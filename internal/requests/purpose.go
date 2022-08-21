@@ -14,13 +14,13 @@ type Purpose interface {
 
 func process2FAVariablePurpose(w http.ResponseWriter, purpose Purpose, login string, twofa bool) {
 	if twofa {
-		temporary := database.TemporaryToken{}
-		err := temporary.New(login, purpose.Name(), purpose)
+		verification := database.VerificationToken{}
+		err := verification.New(login, purpose.Name(), purpose)
 		if err != nil {
-			ErrorHandler(w, apierror.New(err, "Can't create temporary password", "Internal Server Error", 500))
+			ErrorHandler(w, apierror.New(err, "Can't create verification code", "Internal Server Error", 500))
 			return
 		}
-		SetResponse(w, response_temporary_token{Temporary_token: temporary.String}, http.StatusOK)
+		SetResponse(w, response_verification_token{Verification_token: verification.String}, http.StatusOK)
 	} else {
 		apierr := purpose.Do(w)
 		if apierr != nil {
@@ -30,6 +30,6 @@ func process2FAVariablePurpose(w http.ResponseWriter, purpose Purpose, login str
 	}
 }
 
-type response_temporary_token struct {
-	Temporary_token string `json:"temporary_token"`
+type response_verification_token struct {
+	Verification_token string `json:"Verification_token"`
 }

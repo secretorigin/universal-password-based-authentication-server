@@ -55,7 +55,7 @@ func setVariables() {
 		bytes := make([]byte, 4)
 		rand.Read(bytes)
 		code := hex.EncodeToString(bytes)
-		log.Println("Temporary password for login:", login, code)
+		log.Println(fmt.Sprintf("For login: %s, verification code is: %s", login, code))
 		return code
 	}
 }

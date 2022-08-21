@@ -9,19 +9,21 @@ import (
 )
 
 /*
-	This token is used for validation action /confirm with temporary password
+	This token is used for validation action /confirm with verification password
 */
 
-// token for temporary password
-type TemporaryTokenBody struct {
+const VERIFICATION_TOKEN_TYPE = "verification"
+
+// token for verification password
+type VerificationTokenBody struct {
 	Type          string `json:"type"`
 	Id            uint64 `json:"id"`
 	Login         string `json:"login"`
 	Creation_date int64  `json:"creation_date"`
 }
 
-func (body *TemporaryTokenBody) Gen(salt []byte) (string, error) {
-	body.Type = "temporary"
+func (body *VerificationTokenBody) Gen(salt []byte) (string, error) {
+	body.Type = VERIFICATION_TOKEN_TYPE
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"type":          body.Type,
 		"id":            body.Id,
@@ -34,7 +36,7 @@ func (body *TemporaryTokenBody) Gen(salt []byte) (string, error) {
 	return token, nil
 }
 
-func (body *TemporaryTokenBody) Parse(token string) error {
+func (body *VerificationTokenBody) Parse(token string) error {
 	rawbody, err := jwt.DecodeSegment(strings.Split(token, ".")[1])
 	if err != nil {
 		return err
@@ -43,7 +45,7 @@ func (body *TemporaryTokenBody) Parse(token string) error {
 	return err
 }
 
-func (body TemporaryTokenBody) Check(token_str string, salt []byte) (bool, error) {
+func (body VerificationTokenBody) Check(token_str string, salt []byte) (bool, error) {
 	token_obj, err := jwt.Parse(token_str, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

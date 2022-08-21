@@ -1,14 +1,14 @@
 {
   "debug-mode": true,
   "verification": {
-    "password-change": false,
-    "login-change": false,
-    "user-create": false,
-    "user-delete": false,
-    "token-get": false
+    "password-change": true,
+    "login-change": true,
+    "user-create": true,
+    "user-delete": true,
+    "token-get": true
   },
   "regex": {
-    "verification-code": "^[0-9]{6}$",
+    "verification-code": "^[a-z0-9]{8}$",
     "login": "^[a-z][a-z0-9_]{4,14}[a-z0-9]$",
     "password": "^[A-Za-z0-9\\d@$!%*#?&_\\-]{8,64}$",
     "token": "^[A-Za-z0-9-_]*\\.[A-Za-z0-9-_]*\\.[A-Za-z0-9-_]*$"

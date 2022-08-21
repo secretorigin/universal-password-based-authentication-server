@@ -30,12 +30,12 @@ paths:
       responses:
         '200':
           description: >-
-            All is ok, temporary password sent or not (depends on server
+            All is ok, verification code sent or not (depends on server
             settings)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/confirmation_token'
+                $ref: '#/components/schemas/verification_token'
         '400':
           description: Login already in use, or login and password wrong format
   /user/delete:
@@ -58,12 +58,12 @@ paths:
       responses:
         '200':
           description: >-
-            All is ok, temporary password sent or not (depends on server
+            All is ok, verification code sent or not (depends on server
             settings)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/confirmation_token'
+                $ref: '#/components/schemas/verification_token'
         '400':
           description: Wrong access data
   /password/change:
@@ -93,14 +93,14 @@ paths:
       responses:
         '200':
           description: >-
-            All is ok, temporary password sent or not (depends on server
+            All is ok, verification code sent or not (depends on server
             settings)
           content:
             application/json:
               schema:
                 oneOf:
                 - $ref: '#/components/schemas/token_data'
-                - $ref: '#/components/schemas/confirmation_token'
+                - $ref: '#/components/schemas/verification_token'
         '400':
           description: Wrong access data
   /login/change:
@@ -126,12 +126,12 @@ paths:
       responses:
         '200':
           description: >-
-            All is ok, temporary password sent or not (depends on server
+            All is ok, verification code sent or not (depends on server
             settings)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/confirmation_token'
+                $ref: '#/components/schemas/verification_token'
         '400':
           description: Wrong access data
   /token/get:
@@ -148,7 +148,7 @@ paths:
       responses:
         '200':
           description: >-
-            All is ok, temporary password sent or not (depends on server
+            All is ok, verification code sent or not (depends on server
             settings)
           content:
             application/json:
@@ -232,7 +232,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/temporary_login_data'
+              $ref: '#/components/schemas/verification_data'
       responses:
         '200':
           description: All is ok
@@ -242,10 +242,10 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/token_data'
         '400':
-          description: Wrong temporary password or user id
+          description: Wrong verification code or user id
     patch:
       description: >-
-        Used for resending temporary password.
+        Used for resending verification code.
       tags:
         - Additional
       requestBody:
@@ -253,16 +253,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/confirmation_token'
+              $ref: '#/components/schemas/verification_token'
       responses:
         '200':
           description: All is ok, new code sended and new token created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/confirmation_token'
+                $ref: '#/components/schemas/verification_token'
         '400':
-          description: Wrong temporary password or user id
+          description: Wrong verification code or user id
           
 components:
   schemas:
@@ -284,15 +284,15 @@ components:
       example:
         refresh_token: my_refresh_token
         password: my_password
-    temporary_login_data:
+    verification_data:
       properties:
-        temporary_token:
+        verification_token:
           type: string
-        temporary_password:
+        verification_code:
           type: string
       example:
-        temporary_token: my_temporary_token
-        temporary_password: my_temporary_password
+        verification_token: my_verification_token
+        verification_code: my_verification_code
     token_data:
       properties:
         token:
@@ -302,9 +302,9 @@ components:
       example:
         token: my_token
         refresh_token: my_refresh_token
-    confirmation_token:
+    verification_token:
       properties:
-        temporary_token:
+        verification_token:
           type: string
       example:
-        temporary_token: my_temporary_token
+        verification_token: my_temporary_token

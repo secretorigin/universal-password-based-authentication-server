@@ -12,8 +12,8 @@ CREATE TABLE tokens(
   refresh_salt_ varchar(32) NOT NULL
 );
 
-CREATE TABLE temporary_passwords(
-  temporary_password_id_ BIGSERIAL PRIMARY KEY,
+CREATE TABLE verification_codes(
+  verification_code_id_ BIGSERIAL PRIMARY KEY,
 
   -- purposes: create (create user), 
   --           delete (delete user),
@@ -25,6 +25,6 @@ CREATE TABLE temporary_passwords(
   -- all data which you need to do this purpose
   data_ JSON,
 
-  password_ TEXT,
+  code_ TEXT,
   salt_ varchar(32) NOT NULL
 );

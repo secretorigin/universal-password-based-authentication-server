@@ -63,20 +63,20 @@ var (
 		debug:  "-",
 		status: 400}
 
-	WrongTempPassword = sentinelAPIError{
-		err:    errors.New("wrong temporary password"),
+	WrongVerificationCode = sentinelAPIError{
+		err:    errors.New("wrong verification code"),
 		msg:    "Confirmation Error",
 		debug:  "-",
 		status: 400}
 
-	WrongTempToken = sentinelAPIError{
-		err:    errors.New("wrong temporary token"),
+	WrongVerificationToken = sentinelAPIError{
+		err:    errors.New("wrong verification token"),
 		msg:    "Confirmation Error",
 		debug:  "-",
 		status: 400}
 
-	CheckTempToken = sentinelAPIError{
-		err:    errors.New("check temporary token"),
+	CheckVerificationToken = sentinelAPIError{
+		err:    errors.New("check verification token"),
 		msg:    "Confirmation Error",
 		debug:  "-",
 		status: 400}

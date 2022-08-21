@@ -1,3 +1,3 @@
 select * from users;
-select * from temporary_passwords;
+select * from verification_codes;
 select * from tokens;

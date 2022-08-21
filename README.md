@@ -13,14 +13,14 @@ Tables all tables you can see in the <b>./migrations</b> folder
 - new_users: Table for new not confirmed users
 - users: Table for users with their login data
 - tokens: Table for access tokens
-- temporary_passwords: Table for temporary passwords
+- verification_codes: Table for verification codes and purposes for them
 
 <a name="security">
 <h2>Security</h2>
 
 - PBKDF2 + SHA256 password encryption for saving in the database
 - JWT tokens for giving access to the resource
-- Temporary passwords to confirm special actions
+- Verification codes to confirm special actions
 
 <a name="how_to_use">
 <h2>How to use?</h2>
@@ -48,21 +48,21 @@ Tables all tables you can see in the <b>./migrations</b> folder
   }
   ```
 
-- Create functions for sending temparary passwords and set it (<b>settings.TemporaryPasswordSend</b>)
+- Create functions for sending temparary passwords and set it (<b>settings.Conf.VerificationCodeSend</b>)
 
-- Set temporary password regular expession (<b>settings.TemporaryPasswordRegex</b>)
+- Set verification codes regular expession (<b>./configs/server.json</b>).
 
-- Set all 2FA <b>bool</b> variables you need:
-	- <b>settings.PasswordChange2FA</b>
-	- <b>settings.LoginChange2FA</b>
-	- <b>settings.UserCreate2FA</b>
-	- <b>settings.UserDelete2FA</b>
-	- <b>settings.TokenGet2FA</b>
+- Set all 2FA <b>bool</b> variables you need in <b>./configs/server.json</b>.
 
-Login is some information, which is used for delivering temporary passwords to the user, it can be email, or phone number, or other, it just must be written as a string. You can change regular expression for login, changing <b>settings.LoginRegex</b>.
+Login is some information, which is used for delivering verification codes to the user, it can be email, or phone number, or other, it just must be written as a string. You can change regular expression for login in <b>./configs/server.json</b>.
 
-And you can start server (in project directory):
+And you can build and start server (in project directory):
 
 ```bash
+make build
 ./bin/app
 ```
+
+<h2>Problems:<h2>
+
+There was large renaming temporary password in verification codes; temporary token in verification codes, mistakes can be in documentation.
