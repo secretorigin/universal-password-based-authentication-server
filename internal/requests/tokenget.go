@@ -15,8 +15,8 @@ type request_token_get struct {
 }
 
 func (request *request_token_get) Validate() apierror.APIError {
-	if !(regexp.MustCompile(settings.LoginRegex).MatchString(request.Login) &&
-		regexp.MustCompile(settings.PasswordRegex).MatchString(request.Password)) {
+	if !(regexp.MustCompile(settings.Conf.Regex.Login).MatchString(request.Login) &&
+		regexp.MustCompile(settings.Conf.Regex.Password).MatchString(request.Password)) {
 		return apierror.FieldFormat
 	}
 
@@ -56,7 +56,7 @@ func Token_get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	purpose := token_get_purpose{User_id: user.Uint64}
-	process2FAVariablePurpose(w, purpose, body.Login, settings.TokenGet2FA)
+	process2FAVariablePurpose(w, purpose, body.Login, settings.Conf.Verification.TokenGet)
 }
 
 type token_get_purpose struct {

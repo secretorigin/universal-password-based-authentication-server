@@ -20,6 +20,9 @@ func Start() {
 	settings.ParseConf("./configs/db.local.json", &dbconf)
 	database.OpenDB(dbconf)
 
+	// get server properties
+	settings.ParseConf("./configs/server.json", &settings.Conf)
+
 	// initialize and start server
 	var serverconf settings.ServerConf
 	settings.ParseConf("./configs/server.local.json", &serverconf)
@@ -48,20 +51,11 @@ func startServer(conf settings.ServerConf) {
 }
 
 func setVariables() {
-	settings.DebugMode = true
-
-	settings.TemporaryPasswordSend = func(login string) string {
+	settings.Conf.VerificationCodeSend = func(login string) string {
 		bytes := make([]byte, 4)
 		rand.Read(bytes)
 		code := hex.EncodeToString(bytes)
 		log.Println("Temporary password for login:", login, code)
 		return code
 	}
-	settings.TemporaryPasswordRegex = ""
-
-	// settings.UserCreate2FA = true
-	// settings.PasswordChange2FA = true
-	// settings.LoginChange2FA = true
-	// settings.UserDelete2FA = true
-	// settings.TokenGet2FA = true
 }

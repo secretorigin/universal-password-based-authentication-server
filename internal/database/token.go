@@ -69,8 +69,8 @@ func (token Token) Check(token_type string, user_id *uint64) (bool, error) {
 func (token *Token) New(user_id uint64) (Token, error) {
 	var refresh_token Token // will be returned
 	// gen salts
-	var salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
-	var refresh_salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
+	var salt = crypto.GenSalt(int(settings.Conf.Security.Token.SaltLength))
+	var refresh_salt = crypto.GenSalt(int(settings.Conf.Security.Token.SaltLength))
 
 	// insert in database
 	err := GetDB().QueryRow("INSERT INTO tokens (user_id_, salt_, refresh_salt_) VALUES ($1, $2, $3) RETURNING token_id_;",
@@ -129,8 +129,8 @@ func (token *Token) Update(user_id *uint64) (Token, error) {
 		*user_id = body.User_id
 	}
 
-	var salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
-	var refresh_salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
+	var salt = crypto.GenSalt(int(settings.Conf.Security.Token.SaltLength))
+	var refresh_salt = crypto.GenSalt(int(settings.Conf.Security.Token.SaltLength))
 
 	// insert in database
 	_, err := GetDB().Query("UPDATE tokens SET salt_=$1, refresh_salt_=$2 WHERE token_id_=$3;",

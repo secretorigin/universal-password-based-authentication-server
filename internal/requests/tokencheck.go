@@ -14,7 +14,7 @@ type request_token_check struct {
 }
 
 func (request *request_token_check) Validate() apierror.APIError {
-	if !regexp.MustCompile(settings.TokenRegex).MatchString(request.Token) {
+	if !regexp.MustCompile(settings.Conf.Regex.Token).MatchString(request.Token) {
 		return apierror.FieldFormat
 	}
 

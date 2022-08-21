@@ -1,0 +1,29 @@
+{
+  "debug-mode": true,
+  "verification": {
+    "password-change": false,
+    "login-change": false,
+    "user-create": false,
+    "user-delete": false,
+    "token-get": false
+  },
+  "regex": {
+    "verification-code": "^[0-9]{6}$",
+    "login": "^[a-z][a-z0-9_]{4,14}[a-z0-9]$",
+    "password": "^[A-Za-z0-9\\d@$!%*#?&_\\-]{8,64}$",
+    "token": "^[A-Za-z0-9-_]*\\.[A-Za-z0-9-_]*\\.[A-Za-z0-9-_]*$"
+  },
+  "security": {
+    "password": {
+      "min-iterations": 5000,
+      "hash-length": 32,
+      "salt-length": 16
+    },
+    "token": {
+      "salt-length": 16
+    },
+    "time": {
+      "max-response": 500
+    }
+  }
+}

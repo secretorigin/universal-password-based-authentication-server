@@ -16,9 +16,9 @@ type request_password_change struct {
 }
 
 func (request *request_password_change) Validate() apierror.APIError {
-	if !(regexp.MustCompile(settings.TokenRegex).MatchString(request.Access.Refresh_token) &&
-		regexp.MustCompile(settings.PasswordRegex).MatchString(request.Access.Password) &&
-		regexp.MustCompile(settings.PasswordRegex).MatchString(request.New_password)) {
+	if !(regexp.MustCompile(settings.Conf.Regex.Token).MatchString(request.Access.Refresh_token) &&
+		regexp.MustCompile(settings.Conf.Regex.Password).MatchString(request.Access.Password) &&
+		regexp.MustCompile(settings.Conf.Regex.Password).MatchString(request.New_password)) {
 		return apierror.FieldFormat
 	}
 
@@ -57,7 +57,7 @@ func Password_change(w http.ResponseWriter, r *http.Request) {
 		New_password:      body.New_password,
 		Logout_everywhere: body.Logout_everywhere,
 		Refresh_token:     body.Access.Refresh_token}
-	process2FAVariablePurpose(w, purpose, user.String, settings.PasswordChange2FA)
+	process2FAVariablePurpose(w, purpose, user.String, settings.Conf.Verification.PasswordChange)
 }
 
 type password_change_purpose struct {

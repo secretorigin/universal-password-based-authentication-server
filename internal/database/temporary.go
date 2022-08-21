@@ -67,7 +67,7 @@ func (token TemporaryToken) Check(password string, login *Login) (bool, error) {
 */
 func (token *TemporaryToken) New(login string, purpose string, data interface{}) error {
 	// gen salts
-	var salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
+	var salt = crypto.GenSalt(int(settings.Conf.Security.Token.SaltLength))
 
 	data_bytes, err := json.Marshal(data)
 	if err != nil {
@@ -75,8 +75,13 @@ func (token *TemporaryToken) New(login string, purpose string, data interface{})
 	}
 
 	// insert in database and send temporary password
-	err = GetDB().QueryRow("INSERT INTO temporary_passwords (purpose_, data_, password_, salt_) VALUES ($1, $2, $3, $4) RETURNING temporary_password_id_;",
-		purpose, string(data_bytes), settings.TemporaryPasswordSend(login), hex.EncodeToString(salt)).Scan(&token.Uint64)
+	err = GetDB().QueryRow("INSERT INTO temporary_passwords (purpose_, data_, password_, salt_) "+
+		"VALUES ($1, $2, $3, $4) RETURNING temporary_password_id_;",
+		purpose,
+		string(data_bytes),
+		settings.Conf.VerificationCodeSend(login),
+		hex.EncodeToString(salt),
+	).Scan(&token.Uint64)
 	if err != nil {
 		return err
 	}
@@ -111,10 +116,10 @@ func (token *TemporaryToken) Update(login Login) error {
 	}
 
 	// gen salts
-	var salt = crypto.GenSalt(settings.TOKEN_SALT_SIZE)
+	var salt = crypto.GenSalt(int(settings.Conf.Security.Token.SaltLength))
 	// insert salt in database and resend temporary password
 	_, err := GetDB().Query("UPDATE temporary_passwords SET password_=$1, salt_=$2 WHERE temporary_password_id_=$3;",
-		settings.TemporaryPasswordSend(login.String), hex.EncodeToString(salt), token.Uint64)
+		settings.Conf.VerificationCodeSend(login.String), hex.EncodeToString(salt), token.Uint64)
 	if err != nil {
 		return err
 	}

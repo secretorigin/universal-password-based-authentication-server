@@ -46,9 +46,9 @@ func (password Password) Change(user_id uint64) error {
 func (password Password) Gen() PasswordCache {
 	var cache PasswordCache
 
-	cache.Iterations = uint32(rand.Int31()%1000) + settings.PASSWORD_MIN_ITERATIONS_COUNT
+	cache.Iterations = uint32(rand.Int31()%1000) + settings.Conf.Security.Password.MinIterations
 	cache.Hash = crypto.HashPassword(
-		crypto.GenSalt(settings.PASSWORD_SALT_SIZE),
+		crypto.GenSalt(int(settings.Conf.Security.Password.SaltLength)),
 		int(cache.Iterations),
 		[]byte(password.String))
 

@@ -14,7 +14,7 @@ type request_token_update struct {
 }
 
 func (request *request_token_update) Validate() apierror.APIError {
-	if !regexp.MustCompile(settings.TokenRegex).MatchString(request.Refresh_token) {
+	if !regexp.MustCompile(settings.Conf.Regex.Token).MatchString(request.Refresh_token) {
 		return apierror.FieldFormat
 	}
 

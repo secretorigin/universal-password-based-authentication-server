@@ -24,7 +24,7 @@ func SetResponse(w http.ResponseWriter, res interface{}, status int) {
 
 func ErrorHandler(w http.ResponseWriter, err apierror.APIError) {
 	// loging error
-	if settings.DebugMode {
+	if settings.Conf.DebugMode {
 		log.Print("Error: ", err.Error(), ", debug: ", err.Debug(), ", status: ", err.Status())
 	} else {
 		log.Print("Error: ", err.Error())

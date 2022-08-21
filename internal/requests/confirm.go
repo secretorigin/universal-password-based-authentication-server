@@ -19,12 +19,12 @@ type request_confirm struct {
 func (request *request_confirm) Validate() apierror.APIError {
 	switch request.Method {
 	case "POST":
-		if !(regexp.MustCompile(settings.TokenRegex).MatchString(request.Temporary_token) &&
-			regexp.MustCompile(settings.TemporaryPasswordRegex).MatchString(request.Temporary_password)) {
+		if !(regexp.MustCompile(settings.Conf.Regex.Token).MatchString(request.Temporary_token) &&
+			regexp.MustCompile(settings.Conf.Regex.VerificationCode).MatchString(request.Temporary_password)) {
 			return apierror.FieldFormat
 		}
 	case "PATCH":
-		if !regexp.MustCompile(settings.TokenRegex).MatchString(request.Temporary_token) {
+		if !regexp.MustCompile(settings.Conf.Regex.Token).MatchString(request.Temporary_token) {
 			return apierror.FieldFormat
 		}
 	}

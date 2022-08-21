@@ -17,8 +17,8 @@ type request_user_create struct {
 }
 
 func (request *request_user_create) Validate() apierror.APIError {
-	if !(regexp.MustCompile(settings.LoginRegex).MatchString(request.Login) &&
-		regexp.MustCompile(settings.PasswordRegex).MatchString(request.Password)) {
+	if !(regexp.MustCompile(settings.Conf.Regex.Login).MatchString(request.Login) &&
+		regexp.MustCompile(settings.Conf.Regex.Password).MatchString(request.Password)) {
 		return apierror.FieldFormat
 	}
 
@@ -50,7 +50,7 @@ func User_create(w http.ResponseWriter, r *http.Request) {
 		Login:      body.Login,
 		Hash:       hex.EncodeToString(cache.Hash),
 		Iterations: cache.Iterations}
-	process2FAVariablePurpose(w, purpose, body.Login, settings.UserCreate2FA)
+	process2FAVariablePurpose(w, purpose, body.Login, settings.Conf.Verification.UserCreate)
 }
 
 // purpose when 2FA is activated

@@ -15,9 +15,9 @@ type request_login_change struct {
 }
 
 func (request *request_login_change) Validate() apierror.APIError {
-	if !(regexp.MustCompile(settings.TokenRegex).MatchString(request.Access.Refresh_token) &&
-		regexp.MustCompile(settings.PasswordRegex).MatchString(request.Access.Password) &&
-		regexp.MustCompile(settings.LoginRegex).MatchString(request.New_login)) {
+	if !(regexp.MustCompile(settings.Conf.Regex.Token).MatchString(request.Access.Refresh_token) &&
+		regexp.MustCompile(settings.Conf.Regex.Password).MatchString(request.Access.Password) &&
+		regexp.MustCompile(settings.Conf.Regex.Login).MatchString(request.New_login)) {
 		return apierror.FieldFormat
 	}
 
@@ -51,7 +51,7 @@ func Login_change(w http.ResponseWriter, r *http.Request) {
 	}
 
 	purpose := login_change_purpose{User_id: user.Uint64, New_login: body.New_login}
-	process2FAVariablePurpose(w, purpose, body.New_login, settings.UserCreate2FA)
+	process2FAVariablePurpose(w, purpose, body.New_login, settings.Conf.Verification.LoginChange)
 }
 
 type login_change_purpose struct {

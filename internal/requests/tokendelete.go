@@ -14,7 +14,7 @@ type request_token_delete struct {
 }
 
 func (request *request_token_delete) Validate() apierror.APIError {
-	if !regexp.MustCompile(settings.TokenRegex).MatchString(request.Refresh_token) {
+	if !regexp.MustCompile(settings.Conf.Regex.Token).MatchString(request.Refresh_token) {
 		return apierror.FieldFormat
 	}
 

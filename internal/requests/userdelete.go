@@ -15,8 +15,8 @@ type request_user_delete struct {
 }
 
 func (body *request_user_delete) Validate() apierror.APIError {
-	if !(regexp.MustCompile(settings.TokenRegex).MatchString(body.Access.Refresh_token) &&
-		regexp.MustCompile(settings.PasswordRegex).MatchString(body.Access.Password)) {
+	if !(regexp.MustCompile(settings.Conf.Regex.Token).MatchString(body.Access.Refresh_token) &&
+		regexp.MustCompile(settings.Conf.Regex.Password).MatchString(body.Access.Password)) {
 		return apierror.FieldFormat
 	}
 
@@ -51,7 +51,7 @@ func User_delete(w http.ResponseWriter, r *http.Request) {
 		ErrorHandler(w, apierror.New(err, "Can get user's login", "Internal Server Error", 500))
 		return
 	}
-	process2FAVariablePurpose(w, purpose, user.String, settings.UserDelete2FA)
+	process2FAVariablePurpose(w, purpose, user.String, settings.Conf.Verification.UserDelete)
 }
 
 // purpose when 2FA is activated
