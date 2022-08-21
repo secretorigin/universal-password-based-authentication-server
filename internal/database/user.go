@@ -10,13 +10,13 @@ type User struct {
 }
 
 type userCache struct {
-	passwordCache
+	PasswordCache
 	Id    uint64
 	Login string
 }
 
-func (user User) New(password Password) error {
-	cache := userCache{passwordCache: password.Gen(), Login: user.String}
+func (user User) New(pcache PasswordCache) error {
+	cache := userCache{PasswordCache: pcache, Login: user.String}
 	err := GetDB().QueryRow(
 		"INSERT INTO users (login_, password_hash_, password_iterations_) VALUES "+
 			"($1, $2, $3) RETURNING user_id_;",

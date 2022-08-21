@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"regexp"
@@ -43,20 +44,30 @@ func User_create(w http.ResponseWriter, r *http.Request) {
 
 	// process
 
-	purpose := user_create_purpose{Login: body.Login, Password: body.Password}
+	password := database.Password{String: body.Password}
+	cache := password.Gen()
+	purpose := user_create_purpose{
+		Login:      body.Login,
+		Hash:       hex.EncodeToString(cache.Hash),
+		Iterations: cache.Iterations}
 	process2FAVariablePurpose(w, purpose, body.Login, settings.UserCreate2FA)
 }
 
 // purpose when 2FA is activated
 
 type user_create_purpose struct {
-	Login    string `json:"login"`
-	Password string `json:"password"`
+	Login      string `json:"login"`
+	Hash       string `json:"hash"`
+	Iterations uint32 `json:"iterations"`
 }
 
 func (p user_create_purpose) Do(w http.ResponseWriter) apierror.APIError {
 	user := database.User{String: p.Login}
-	err := user.New(database.Password{String: p.Password})
+	hash, err := hex.DecodeString(p.Hash)
+	if err != nil {
+		return apierror.New(err, "wring hash format", "Internal Server Error", 500)
+	}
+	err = user.New(database.PasswordCache{Hash: hash, Iterations: p.Iterations})
 	if err != nil {
 		return apierror.New(err, "user creation", "Internal Server Error", 500)
 	}

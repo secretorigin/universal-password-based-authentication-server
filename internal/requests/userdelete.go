@@ -61,8 +61,13 @@ type user_delete_purpose struct {
 }
 
 func (p user_delete_purpose) Do(w http.ResponseWriter) apierror.APIError {
+	// delete user
 	user := database.User{Uint64: p.User_id}
-	err := user.Delete()
+	err := user.LogoutEverywhere()
+	if err != nil {
+		return apierror.New(err, "Can not log out every where for deleting user.", "Internal Server Error", 500)
+	}
+	err = user.Delete()
 	if err != nil {
 		return apierror.New(err, "Can not delete user", "Internal Server Error", 500)
 	}

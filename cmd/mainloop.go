@@ -59,9 +59,9 @@ func setVariables() {
 	}
 	settings.TemporaryPasswordRegex = ""
 
-	settings.UserCreate2FA = true
-	settings.PasswordChange2FA = true
-	settings.LoginChange2FA = true
-	settings.UserDelete2FA = true
-	settings.TokenGet2FA = true
+	// settings.UserCreate2FA = true
+	// settings.PasswordChange2FA = true
+	// settings.LoginChange2FA = true
+	// settings.UserDelete2FA = true
+	// settings.TokenGet2FA = true
 }

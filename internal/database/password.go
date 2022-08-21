@@ -12,13 +12,13 @@ type Password struct {
 	String string
 }
 
-type passwordCache struct {
+type PasswordCache struct {
 	Hash       []byte
 	Iterations uint32
 }
 
 func (password Password) Check(user User) (bool, error) {
-	var cache passwordCache
+	var cache PasswordCache
 	var hash string
 	err := GetDB().QueryRow("SELECT password_hash_, password_iterations_ FROM users WHERE user_id_=$1;",
 		user.Uint64).Scan(&hash, &cache.Iterations)
@@ -43,8 +43,8 @@ func (password Password) Change(user_id uint64) error {
 	return err
 }
 
-func (password Password) Gen() passwordCache {
-	var cache passwordCache
+func (password Password) Gen() PasswordCache {
+	var cache PasswordCache
 
 	cache.Iterations = uint32(rand.Int31()%1000) + settings.PASSWORD_MIN_ITERATIONS_COUNT
 	cache.Hash = crypto.HashPassword(
