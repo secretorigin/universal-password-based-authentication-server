@@ -18,7 +18,7 @@ tags:
 paths:
   /user/create:
     post:
-      description: Register new user in the system.
+      description: Register new user in the system. (invite code if invite code is required)
       tags:
         - User
       requestBody:
@@ -26,7 +26,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/login_data'
+              properties:
+                login:
+                  type: string
+                password:
+                  type: string
+                invite-code:
+                  type: string
       responses:
         '200':
           description: >-
@@ -144,7 +150,11 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/login_data'
+              properties:
+                login:
+                  type: string
+                password:
+                  type: string
       responses:
         '200':
           description: >-
@@ -263,18 +273,49 @@ paths:
                 $ref: '#/components/schemas/verification_token'
         '400':
           description: Wrong verification code or user id
-          
+  /twofa:
+    patch:
+      description: >-
+        Activate Two Factor Auth
+      tags:
+        - Additional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                access:
+                  $ref: '#/components/schemas/access_data'
+      responses:
+        '200':
+          description: All is ok
+        '400':
+          description: Wrong verification code or user id
+  /forgot-password:
+    post:
+      description: send token for auth
+      tags:
+        - Additional
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                login:
+                  type: string
+      responses:
+        '200':
+          description: All is ok, code sended and token created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/verification_token'
+        '400':
+          description: Wrong verification code or user id
 components:
   schemas:
-    login_data:
-      properties:
-        login:
-          type: string
-        password:
-          type: string
-      example:
-        login: my_login
-        password: my_password
     access_data:
       properties:
         refresh_token:

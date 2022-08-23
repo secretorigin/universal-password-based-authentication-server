@@ -2,10 +2,13 @@ package requests
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/p2034/universal-password-based-authentication-server/internal/apierror"
+	"github.com/p2034/universal-password-based-authentication-server/internal/crypto"
 	"github.com/p2034/universal-password-based-authentication-server/internal/database"
 	"github.com/p2034/universal-password-based-authentication-server/internal/settings"
 )
@@ -47,21 +50,20 @@ func Confirm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// process
+	var login database.Login
+	verification := database.VerificationToken{String: body.Verification_token}
+	ok, err := verification.Check(body.Verification_code, &login)
+	if err != nil {
+		ErrorHandler(w, apierror.New(err, "can not check verification code", "Bad Request", 400))
+		return
+	}
+	if !ok {
+		ErrorHandler(w, apierror.WrongVerificationCode)
+		return
+	}
 
 	switch r.Method {
 	case "POST":
-		var login database.Login
-		verification := database.VerificationToken{String: body.Verification_token}
-		ok, err := verification.Check(body.Verification_code, &login)
-		if err != nil {
-			ErrorHandler(w, apierror.New(err, "can not check verification code", "Bad Request", 400))
-			return
-		}
-		if !ok {
-			ErrorHandler(w, apierror.WrongVerificationCode)
-			return
-		}
-
 		purpose, err := verification.GetPurpose()
 
 		var p Purpose
@@ -94,22 +96,26 @@ func Confirm(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "PATCH":
-		var login database.Login
-		verification := database.VerificationToken{String: body.Verification_token}
-		ok, err := verification.Check(body.Verification_code, &login)
-		if err != nil {
-			ErrorHandler(w, apierror.New(err, "can not check verification code", "Bad Request", 400))
-			return
-		}
-		if !ok {
-			ErrorHandler(w, apierror.WrongVerificationCode)
+		//check time
+		resend_waiting_time := time.Duration(
+			uint32(math.Pow(
+				float64(settings.Conf.Security.Verification.ResendTimeCoefficient),
+				float64(verification.Resended)),
+			)*settings.Conf.Security.Time.Resend) * time.Second
+		if !crypto.TimePassed(time.Unix(verification.Creation_date, 0), resend_waiting_time) {
+			ErrorHandler(w, apierror.New(nil, "can not resend in this time", "Unavailable Resend", 400))
 			return
 		}
 
 		err = verification.Update(login)
 		if err != nil {
-			ErrorHandler(w, apierror.New(err, "Can't update verification code", "Internal Server Error", 500))
-			return
+			if err.Error() == "impossible resending" {
+				ErrorHandler(w, apierror.New(err, "awailable resend count is 0", "Token dies", 400))
+				return
+			} else {
+				ErrorHandler(w, apierror.New(err, "Can't update verification code", "Internal Server Error", 500))
+				return
+			}
 		}
 		res := response_confirm_patch{Verification_token: verification.String}
 		SetResponse(w, res, http.StatusOK)

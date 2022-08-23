@@ -43,6 +43,8 @@ func startServer(conf settings.ServerConf) {
 	http.HandleFunc("/token/update", requests.Handler(requests.Token_update))
 
 	http.HandleFunc("/confirm", requests.Handler(requests.Confirm))
+	http.HandleFunc("/twofa", requests.Handler(requests.Twofa))
+	http.HandleFunc("/forgot-password", requests.Handler(requests.ForgotPassword))
 
 	// start server
 	host := fmt.Sprintf("%s:%d", conf.Host, conf.Port)

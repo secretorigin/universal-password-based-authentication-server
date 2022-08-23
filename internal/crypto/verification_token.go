@@ -20,6 +20,7 @@ type VerificationTokenBody struct {
 	Id            uint64 `json:"id"`
 	Login         string `json:"login"`
 	Creation_date int64  `json:"creation_date"`
+	Resended      uint16 `json:"resended"`
 }
 
 func (body *VerificationTokenBody) Gen(salt []byte) (string, error) {
@@ -29,6 +30,7 @@ func (body *VerificationTokenBody) Gen(salt []byte) (string, error) {
 		"id":            body.Id,
 		"login":         body.Login,
 		"creation_date": body.Creation_date,
+		"resended":      body.Resended,
 	}).SignedString(salt)
 	if err != nil {
 		return "", err

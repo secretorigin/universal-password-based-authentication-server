@@ -55,6 +55,21 @@ func (token Token) Check(token_type string, user_id *uint64) (bool, error) {
 		return false, err
 	}
 
+	// time check
+	if body.Type == "token" {
+		if crypto.TimePassed(time.Unix(body.Creation_date, 0),
+			time.Duration(settings.Conf.Security.Time.LiveTime.Token)*time.Second) {
+			return false, errors.New("live time passed")
+		}
+	} else if body.Type == "refresh" {
+		if crypto.TimePassed(time.Unix(body.Creation_date, 0),
+			time.Duration(settings.Conf.Security.Time.LiveTime.RefreshToken)*time.Second) {
+			return false, errors.New("live time passed")
+		}
+	} else {
+		return false, errors.New("wrong type")
+	}
+
 	salt_bytes, err := hex.DecodeString(salt)
 	if err != nil {
 		return false, err
@@ -85,7 +100,7 @@ func (token *Token) New(user_id uint64) (Token, error) {
 		Type:          TOKEN_TYPE,
 		Id:            token.Uint64,
 		User_id:       user_id,
-		Creation_date: time.Now().UnixMicro(),
+		Creation_date: time.Now().Unix(),
 	}
 	token.String, err = token_body.Gen(salt)
 	if err != nil {
@@ -96,7 +111,7 @@ func (token *Token) New(user_id uint64) (Token, error) {
 		Type:          REFRESH_TOKEN_TYPE,
 		Id:            refresh_token.Uint64,
 		User_id:       user_id,
-		Creation_date: time.Now().UnixMicro(),
+		Creation_date: time.Now().Unix(),
 	}
 	refresh_token.String, err = refresh_token_body.Gen(refresh_salt)
 	if err != nil {
@@ -144,7 +159,7 @@ func (token *Token) Update(user_id *uint64) (Token, error) {
 		Type:          TOKEN_TYPE,
 		Id:            token.Uint64,
 		User_id:       *user_id,
-		Creation_date: time.Now().UnixMicro(),
+		Creation_date: time.Now().Unix(),
 	}
 	token.String, err = token_body.Gen(salt)
 	if err != nil {
@@ -155,7 +170,7 @@ func (token *Token) Update(user_id *uint64) (Token, error) {
 		Type:          REFRESH_TOKEN_TYPE,
 		Id:            refresh_token.Uint64,
 		User_id:       *user_id,
-		Creation_date: time.Now().UnixMicro(),
+		Creation_date: time.Now().Unix(),
 	}
 	refresh_token.String, err = refresh_token_body.Gen(refresh_salt)
 	if err != nil {

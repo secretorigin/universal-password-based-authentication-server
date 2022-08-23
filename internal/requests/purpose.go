@@ -31,5 +31,5 @@ func process2FAVariablePurpose(w http.ResponseWriter, purpose Purpose, login str
 }
 
 type response_verification_token struct {
-	Verification_token string `json:"Verification_token"`
+	Verification_token string `json:"verification_token"`
 }

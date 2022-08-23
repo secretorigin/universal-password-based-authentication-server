@@ -11,12 +11,14 @@ import (
 )
 
 type VerificationToken struct {
-	String string
-	Uint64 uint64
+	String        string
+	Uint64        uint64
+	Creation_date int64
+	Resended      uint16
 }
 
 // if you do not want to check verification code just set it ""
-func (token VerificationToken) Check(password string, login *Login) (bool, error) {
+func (token *VerificationToken) Check(password string, login *Login) (bool, error) {
 	var body crypto.VerificationTokenBody
 	err := body.Parse(token.String)
 	if err != nil {
@@ -26,6 +28,14 @@ func (token VerificationToken) Check(password string, login *Login) (bool, error
 		return false, errors.New("wrong token type")
 	}
 	login.String = body.Login
+	token.Creation_date = body.Creation_date
+	token.Resended = body.Resended
+
+	// time check
+	if crypto.TimePassed(time.Unix(body.Creation_date, 0),
+		time.Duration(settings.Conf.Security.Time.LiveTime.VerificationToken)*time.Second) {
+		return false, errors.New("live time passed")
+	}
 
 	var salt string
 	var password_from_db string
@@ -89,7 +99,8 @@ func (token *VerificationToken) New(login string, purpose string, data interface
 		Type:          crypto.VERIFICATION_TOKEN_TYPE,
 		Id:            token.Uint64,
 		Login:         login,
-		Creation_date: time.Now().UnixMicro(),
+		Creation_date: time.Now().Unix(),
+		Resended:      0,
 	}
 	token.String, err = token_body.Gen(salt)
 	if err != nil {
@@ -111,6 +122,12 @@ func (token *VerificationToken) Update(login Login) error {
 			return errors.New("wrong token type")
 		}
 		token.Uint64 = body.Id
+		token.Creation_date = body.Creation_date
+		token.Resended = body.Resended
+	}
+
+	if token.Resended >= settings.Conf.Security.Verification.MaxResendCount {
+		return errors.New("impossible resending")
 	}
 
 	// gen salts
@@ -123,11 +140,13 @@ func (token *VerificationToken) Update(login Login) error {
 	}
 
 	// gen token
+	token.Resended += 1
 	token_body := crypto.VerificationTokenBody{
 		Type:          crypto.VERIFICATION_TOKEN_TYPE,
 		Id:            token.Uint64,
 		Login:         login.String,
-		Creation_date: time.Now().UnixMicro(),
+		Creation_date: time.Now().Unix(),
+		Resended:      token.Resended,
 	}
 	token.String, err = token_body.Gen(salt)
 	if err != nil {

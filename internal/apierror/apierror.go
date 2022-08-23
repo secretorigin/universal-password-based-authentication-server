@@ -15,6 +15,10 @@ type sentinelAPIError struct {
 }
 
 func (e sentinelAPIError) Error() string {
+	if e.err == nil {
+		return "-"
+	}
+
 	return e.err.Error()
 }
 

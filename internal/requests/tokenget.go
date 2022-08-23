@@ -55,8 +55,14 @@ func Token_get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	twofa, err := user.GetTwoFA()
+	if err != nil {
+		ErrorHandler(w, apierror.New(err, "can not get user's twofa", "Internal Server Error", 500))
+		return
+	}
+
 	purpose := token_get_purpose{User_id: user.Uint64}
-	process2FAVariablePurpose(w, purpose, body.Login, settings.Conf.Verification.TokenGet)
+	process2FAVariablePurpose(w, purpose, body.Login, settings.Conf.Verification.TokenGet && twofa)
 }
 
 type token_get_purpose struct {

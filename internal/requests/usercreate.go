@@ -12,13 +12,19 @@ import (
 )
 
 type request_user_create struct {
-	Login    string `json:"login"`
-	Password string `json:"password"`
+	Login      string `json:"login"`
+	Password   string `json:"password"`
+	InviteCode string `json:"invite-code"`
 }
 
 func (request *request_user_create) Validate() apierror.APIError {
 	if !(regexp.MustCompile(settings.Conf.Regex.Login).MatchString(request.Login) &&
 		regexp.MustCompile(settings.Conf.Regex.Password).MatchString(request.Password)) {
+		return apierror.FieldFormat
+	}
+
+	if settings.Conf.Security.InviteCode &&
+		!regexp.MustCompile(settings.Conf.Regex.InviteCode).MatchString(request.InviteCode) {
 		return apierror.FieldFormat
 	}
 
@@ -44,6 +50,16 @@ func User_create(w http.ResponseWriter, r *http.Request) {
 
 	// process
 
+	invite_code := database.InviteCode{Id: 0, Code: body.InviteCode}
+	if settings.Conf.Security.InviteCode {
+		invite_code.Code = body.InviteCode
+		err := invite_code.Use()
+		if err != nil {
+			ErrorHandler(w, apierror.New(err, "invite code does not exist or already used", "Bad Request", 400))
+			return
+		}
+	}
+
 	password := database.Password{String: body.Password}
 	cache := password.Gen()
 	purpose := user_create_purpose{
@@ -56,9 +72,10 @@ func User_create(w http.ResponseWriter, r *http.Request) {
 // purpose when 2FA is activated
 
 type user_create_purpose struct {
-	Login      string `json:"login"`
-	Hash       string `json:"hash"`
-	Iterations uint32 `json:"iterations"`
+	InviteCodeId uint64 `json:"invite-code-id"`
+	Login        string `json:"login"`
+	Hash         string `json:"hash"`
+	Iterations   uint32 `json:"iterations"`
 }
 
 func (p user_create_purpose) Do(w http.ResponseWriter) apierror.APIError {

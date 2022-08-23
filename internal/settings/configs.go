@@ -24,6 +24,9 @@ type ServerSettingsConf struct {
 	// function for sending verification code
 	VerificationCodeSend func(string) string `json:"-"`
 
+	// invite code creation function
+	InviteCodeCreate func(invite_code_id uint64) string `json:"-"`
+
 	// print all errors and debug messages
 	DebugMode bool `json:"debug-mode"`
 
@@ -37,12 +40,14 @@ type ServerSettingsConf struct {
 	} `json:"verification"`
 	Regex struct {
 		VerificationCode string `json:"verification-code"`
+		InviteCode       string `json:"invite-code"`
 		Login            string `json:"login"`
 		Password         string `json:"password"`
 		Token            string `json:"token"`
 	} `json:"regex"`
 	Security struct {
-		Password struct {
+		InviteCode bool `json:"invite-code"`
+		Password   struct {
 			MinIterations uint32 `json:"min-iterations"`
 			HashLength    uint32 `json:"hash-length"`
 			SaltLength    uint32 `json:"salt-length"`
@@ -52,7 +57,17 @@ type ServerSettingsConf struct {
 		} `json:"token"`
 		Time struct {
 			MaxResponse uint32 `json:"max-response"` // must be in milliseconds
+			LiveTime    struct {
+				VerificationToken uint32 `json:"verification-token"` // time in seconds
+				Token             uint32 `json:"token"`
+				RefreshToken      uint32 `json:"refresh-token"`
+			} `json:"live-time"`
+			Resend uint32 `json:"resend"` // time before resending code
 		}
+		Verification struct {
+			MaxResendCount        uint16 `json:"max-resend-count"`
+			ResendTimeCoefficient uint16 `json:"resend-time-coefficient"`
+		} `json:"verification"`
 	} `json:"security"`
 }
 
