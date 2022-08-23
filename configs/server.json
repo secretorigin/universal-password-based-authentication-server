@@ -31,7 +31,7 @@
         "token":900,
         "refresh-token": 1296000
       },
-      "resend": 10
+      "resend": 90
     },
     "verification": {
       "max-resend-count": 3,

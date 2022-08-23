@@ -33,6 +33,10 @@ paths:
                   type: string
                 invite-code:
                   type: string
+              example:
+                login: my_login
+                password: my_password
+                invite-code: my_invite_code
       responses:
         '200':
           description: >-
@@ -155,6 +159,9 @@ paths:
                   type: string
                 password:
                   type: string
+              example:
+                login: my_login
+                password: my_password
       responses:
         '200':
           description: >-
@@ -305,6 +312,8 @@ paths:
               properties:
                 login:
                   type: string
+              example:
+                login: my_login
       responses:
         '200':
           description: All is ok, code sended and token created

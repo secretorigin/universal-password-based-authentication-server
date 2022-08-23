@@ -118,7 +118,7 @@ func Confirm(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		res := response_confirm_patch{Verification_token: verification.String}
-		SetResponse(w, res, http.StatusOK)
+		SetResponse(w, res, http.StatusAccepted)
 	default:
 		ErrorHandler(w, apierror.NotFound)
 	}

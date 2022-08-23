@@ -20,7 +20,7 @@ func process2FAVariablePurpose(w http.ResponseWriter, purpose Purpose, login str
 			ErrorHandler(w, apierror.New(err, "Can't create verification code", "Internal Server Error", 500))
 			return
 		}
-		SetResponse(w, response_verification_token{Verification_token: verification.String}, http.StatusOK)
+		SetResponse(w, response_verification_token{Verification_token: verification.String}, http.StatusAccepted)
 	} else {
 		apierr := purpose.Do(w)
 		if apierr != nil {
