@@ -299,7 +299,7 @@ paths:
           description: All is ok
         '400':
           description: Wrong verification code or user id
-  /forgot-password:
+  /password/recovery:
     post:
       description: send token for auth
       tags:
@@ -312,6 +312,10 @@ paths:
               properties:
                 login:
                   type: string
+                new_password:
+                  type: string
+                logout_everywhere:
+                  type: bool
               example:
                 login: my_login
       responses:
