@@ -25,7 +25,7 @@ func (request *request_password_recovery) Validate() apierror.APIError {
 }
 
 func Password_recovery(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/password/recovery" || r.Method != "POST" {
+	if r.URL.Path != "/password/recovery" || r.Method != "PATCH" {
 		ErrorHandler(w, apierror.NotFound)
 		return
 	}

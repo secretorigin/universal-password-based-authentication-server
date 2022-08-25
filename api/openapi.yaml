@@ -39,9 +39,13 @@ paths:
                 invite-code: my_invite_code
       responses:
         '200':
-          description: >-
-            All is ok, verification code sent or not (depends on server
-            settings)
+          description: ok, user created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+        '202':
+          description: ok, verification code sent
           content:
             application/json:
               schema:
@@ -66,7 +70,7 @@ paths:
                   refresh_token: my_refresh_token
                   password: my_password
       responses:
-        '200':
+        '202':
           description: >-
             All is ok, verification code sent or not (depends on server
             settings)
@@ -101,7 +105,7 @@ paths:
                 new_password: my_new_password
                 logout_everywhere: false
       responses:
-        '200':
+        '202':
           description: >-
             All is ok, verification code sent or not (depends on server
             settings)
@@ -134,7 +138,7 @@ paths:
                   password: my_password
                 new_login: my_new_login
       responses:
-        '200':
+        '202':
           description: >-
             All is ok, verification code sent or not (depends on server
             settings)
@@ -258,6 +262,7 @@ paths:
               schema:
                 oneOf:
                   - $ref: '#/components/schemas/token_data'
+                  - $ref: '#/components/schemas/user'
         '400':
           description: Wrong verification code or user id
     patch:
@@ -272,7 +277,7 @@ paths:
             schema:
               $ref: '#/components/schemas/verification_token'
       responses:
-        '200':
+        '202':
           description: All is ok, new code sended and new token created
           content:
             application/json:
@@ -300,7 +305,7 @@ paths:
         '400':
           description: Wrong verification code or user id
   /password/recovery:
-    post:
+    patch:
       description: send token for auth
       tags:
         - Additional
@@ -315,11 +320,11 @@ paths:
                 new_password:
                   type: string
                 logout_everywhere:
-                  type: bool
+                  type: boolean
               example:
                 login: my_login
       responses:
-        '200':
+        '202':
           description: All is ok, code sended and token created
           content:
             application/json:
@@ -329,6 +334,10 @@ paths:
           description: Wrong verification code or user id
 components:
   schemas:
+    user:
+      properties:
+        user_id:
+          type: integer
     access_data:
       properties:
         refresh_token:

@@ -89,7 +89,7 @@ func (p user_create_purpose) Do(w http.ResponseWriter) apierror.APIError {
 		return apierror.New(err, "user creation", "Internal Server Error", 500)
 	}
 
-	SetResponse(w, nil, http.StatusOK)
+	SetResponse(w, response_user_create{User_id: user.Uint64}, http.StatusOK)
 	return nil
 }
 
@@ -100,4 +100,8 @@ func (p user_create_purpose) Name() string {
 func (p user_create_purpose) Encode() []byte {
 	body, _ := json.Marshal(p)
 	return body
+}
+
+type response_user_create struct {
+	User_id uint64 `json:"user_id"`
 }
