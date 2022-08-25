@@ -44,7 +44,7 @@ func startServer(conf settings.ServerConf) {
 
 	http.HandleFunc("/confirm", requests.Handler(requests.Confirm))
 	http.HandleFunc("/twofa", requests.Handler(requests.Twofa))
-	http.HandleFunc("/forgot-password", requests.Handler(requests.ForgotPassword))
+	http.HandleFunc("/password/recovery", requests.Handler(requests.Password_recovery))
 
 	// start server
 	host := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
