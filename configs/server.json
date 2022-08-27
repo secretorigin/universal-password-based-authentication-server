@@ -15,7 +15,7 @@
     "token": "^[A-Za-z0-9-_]*\\.[A-Za-z0-9-_]*\\.[A-Za-z0-9-_]*$"
   },
   "security": {
-    "invite-code": true,
+    "invite-code": false,
     "password": {
       "min-iterations": 5000,
       "hash-length": 32,

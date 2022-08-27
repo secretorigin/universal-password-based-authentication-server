@@ -79,6 +79,10 @@ type user_create_purpose struct {
 }
 
 func (p user_create_purpose) Do(w http.ResponseWriter) apierror.APIError {
+	if !database.CheckLoginUnique(p.Login) {
+		return apierror.LoginAlreadyExist
+	}
+
 	user := database.User{String: p.Login}
 	hash, err := hex.DecodeString(p.Hash)
 	if err != nil {

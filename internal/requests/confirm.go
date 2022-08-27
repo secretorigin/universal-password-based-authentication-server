@@ -87,7 +87,11 @@ func Confirm(w http.ResponseWriter, r *http.Request) {
 			ErrorHandler(w, apierror.New(err, "can not unmarshal purpose body", "Internal Server Error", 500))
 			return
 		}
-		p.Do(w)
+		apierr = p.Do(w)
+		if apierr != nil {
+			ErrorHandler(w, apierr)
+			return
+		}
 
 		// delete old part time password
 		err = verification.Delete()

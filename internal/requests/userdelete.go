@@ -71,7 +71,7 @@ func (p user_delete_purpose) Do(w http.ResponseWriter) apierror.APIError {
 	if err != nil {
 		return apierror.New(err, "Can not delete user", "Internal Server Error", 500)
 	}
-	SetResponse(w, nil, http.StatusOK)
+	SetResponse(w, p, http.StatusOK)
 	return nil
 }
 
