@@ -16,6 +16,27 @@ tags:
   - name: Additional
     description: Some helping handles
 paths:
+  /specifications:
+    get:
+      description: Server info
+      tags:
+        - Additional
+      responses:
+        '200':
+          description: ok, user created
+          content:
+            application/json:
+              schema:
+                properties:
+                  debug-mode:
+                    type: boolean
+                  verification:
+                    $ref: '#/components/schemas/specifications_verification'
+                  regex:
+                    $ref: '#/components/schemas/specifications_regex'
+                  invite-code:
+                    type: boolean
+                      
   /user/create:
     post:
       description: Register new user in the system. (invite code if invite code is required)
@@ -377,3 +398,28 @@ components:
           type: string
       example:
         verification_token: my_temporary_token
+    
+    specifications_verification:
+      properties:
+        password-change:
+          type: boolean
+        login-change:
+          type: boolean
+        user-create:
+          type: boolean
+        user-delete:
+          type: boolean
+        token-get:
+          type: boolean
+    specifications_regex:
+      properties:
+        verification-code:
+          type: string
+        invite-code:
+          type: string
+        login:
+          type: string
+        password:
+          type: string
+        token:
+          type: string
